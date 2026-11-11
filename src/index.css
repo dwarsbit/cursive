@@ -663,3 +663,15 @@
     transition: none !important;
   }
 }
+
+/* ---------- Markdown mode: the page as its file ---------- */
+.source {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 40px 30vh;
+}
+@media (max-width: 860px) {
+  .source {
+    padding: 24px 20px 30vh;
+  }
+}

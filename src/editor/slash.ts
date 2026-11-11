@@ -63,7 +63,8 @@ export const slashKey = new PluginKey("slash");
 
 /** Runs a block's command in place of the typed slash and query. */
 export function insertBlock(editor: Editor, range: Range, item: BlockItem): void {
-  item.run(editor.chain().focus().deleteRange(range)).run();
+  const chain = item.opensField ? editor.chain() : editor.chain().focus();
+  item.run(chain.deleteRange(range)).run();
 }
 
 /**

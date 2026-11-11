@@ -8,6 +8,7 @@ import { GripVertical, Plus } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { documentExtensions, lowlight } from "@/editor/extensions";
 import { createSlashController, Slash } from "@/editor/slash";
+import { tidyMarkdown } from "@/lib/page-file";
 import { CodeBlockView } from "./CodeBlockView";
 import { MathPopover, type MathTarget } from "./MathPopover";
 import { SelectionToolbar } from "./SelectionToolbar";
@@ -15,7 +16,6 @@ import { SlashMenu } from "./SlashMenu";
 
 export interface EditorChange {
   markdown: string;
-  text: string;
 }
 
 /** The visual face of a page: blocks you edit in place. */
@@ -76,9 +76,9 @@ export function Editor({
       attributes: { class: "doc", "aria-label": "Page", spellcheck: "true" },
     },
     onCreate: ({ editor: e }) =>
-      onChangeRef.current({ markdown: e.getMarkdown(), text: e.getText() }),
+      onChangeRef.current({ markdown: tidyMarkdown(e.getMarkdown()) }),
     onUpdate: ({ editor: e, transaction }) => {
-      onChangeRef.current({ markdown: e.getMarkdown(), text: e.getText() });
+      onChangeRef.current({ markdown: tidyMarkdown(e.getMarkdown()) });
       // A new equation is empty: open its field right away.
       if (!transaction.docChanged) return;
       e.state.doc.descendants((node, pos) => {

@@ -24,8 +24,12 @@ interface kit, account and server with [Polemic](https://github.com/dwarsbit/pol
   with `[!note]`, toggles are `<details>` elements and equations are TeX
   between `$$`.
 
+- **Visual and Markdown mode**: switch with the buttons in the header or
+  Cmd/Ctrl + /. Markdown mode shows the page as its file, with the title in
+  the front matter.
+
 The page is kept in your browser for now. Projects as folders of `.md` files,
-the page tree, Markdown mode and the desktop app come next.
+the page tree and the desktop app come next.
 
 ## Development
 
@@ -43,7 +47,8 @@ pnpm build
 - `src/editor`: the document model. `extensions.ts` lists the blocks,
   `blocks.ts` what the slash menu offers, `callout.ts` and `toggle.ts` the
   blocks Cursive adds with their Markdown form.
-- `src/components`: the editor and its menus.
+- `src/components`: the two editors and their menus.
+- `src/lib/page-file.ts`: a page as a Markdown file with front matter.
 - `src/index.css`: the Polemic design tokens with Cursive's indigo as the one
   tint, and the styles of the blocks.
 

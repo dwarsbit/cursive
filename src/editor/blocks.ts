@@ -22,6 +22,8 @@ export interface BlockItem {
   group: "Basic blocks" | "More blocks";
   /** The tile: a few letters or an icon. */
   glyph: string | LucideIcon;
+  /** The block opens a field of its own, so the caret doesn't go back to the page. */
+  opensField?: boolean;
   /** Whether a block with text can be turned into this one. */
   turnInto: boolean;
   isActive?: (editor: Editor) => boolean;
@@ -167,6 +169,7 @@ export const BLOCKS: BlockItem[] = [
     keywords: ["math", "latex", "tex", "formula"],
     group: "More blocks",
     glyph: "∑",
+    opensField: true,
     turnInto: false,
     run: (chain) => chain.insertContent({ type: "blockMath", attrs: { latex: "" } }),
   },

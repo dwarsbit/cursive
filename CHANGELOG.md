@@ -7,3 +7,4 @@
 - Select text to make it bold, italic, underlined, struck through, inline code, highlighted or a link, or to turn its block into another one.
 - Hover a block to add a block under it or drag it to another place.
 - Every block is read from and written to Markdown.
+- Switch between Visual and Markdown mode with the buttons in the header or Cmd/Ctrl + /. Markdown mode shows the page as its file, with the title in the front matter.

@@ -33,7 +33,7 @@ export function MathPopover({
     }).then(({ x, y }) => {
       popover.style.left = `${x}px`;
       popover.style.top = `${y}px`;
-      popover.style.visibility = "visible";
+      popover.style.opacity = "1";
     });
   }, [editor, target.pos, latex]);
 
@@ -111,7 +111,8 @@ export function MathPopover({
     <div
       ref={ref}
       className="popover fixed z-30 w-[min(22rem,calc(100vw-1rem))] p-2"
-      style={{ visibility: "hidden" }}
+      // Transparent until it is placed; a hidden field could not take the focus.
+      style={{ opacity: 0 }}
     >
       <textarea
         ref={field}
