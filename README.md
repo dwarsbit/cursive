@@ -4,8 +4,9 @@ A Markdown editor in the style of Notion. You write in a visual mode with no
 Markdown syntax, switch to Markdown when you want the source, and publish a
 project as a web page. A project is notes, a presentation or a tutorial.
 
-Cursive is in early development and has no release yet. It shares its
-interface kit, account and server with [Polemic](https://github.com/dwarsbit/polemic).
+Cursive is in early development: notes projects work, presentations and
+tutorials are still to come. It shares its interface kit, account and server
+with [Polemic](https://github.com/dwarsbit/polemic).
 
 ## What works today
 
@@ -36,7 +37,21 @@ interface kit, account and server with [Polemic](https://github.com/dwarsbit/pol
 
 - **Desktop app**: open a folder on your computer as a project. Each page is
   a `.md` file in it, saved as you type, and a page or folder you delete
-  moves to the trash. In the browser, the project is kept in the browser.
+  moves to the trash.
+- **Account and sync**: sign in to your Polemic account from the Account
+  button, then sync the folder to your account. Changes travel both ways,
+  also the ones you made offline, and two changes to the same page are both
+  kept. On another computer, open the project from your account in an empty
+  folder.
+- **Publish**: the Publish button makes a site of the project's pages, at an
+  address you choose under the server's sites address. Publish again to bring
+  the site up to date, or unpublish it.
+- **In the browser**: the Polemic server serves Cursive at `/cursive`, where
+  you open and edit the projects in your account. Pages are saved to the
+  account as you type.
+
+Sync carries the pages, the `.md` files. An empty folder stays on the
+computer it was made on.
 
 ## Development
 
@@ -53,7 +68,16 @@ pnpm test
 pnpm lint
 pnpm build
 cargo test --manifest-path src-tauri/Cargo.toml
+pnpm dev:web      # the browser app as the server serves it, at /cursive/
+pnpm build:web    # that app, built into dist-web
 ```
+
+`pnpm dev` in a browser is a demo: it keeps a sample project in the browser's
+own storage. `pnpm dev:web` needs a Polemic server on this computer
+([polemic-server](https://github.com/dwarsbit/polemic-server)'s `pnpm dev:api`),
+or the one `CURSIVE_SERVER` names, for `/api`; sign in on that server first.
+The desktop app signs in to `https://app.polemicapp.com`; start it with
+`CURSIVE_SERVER=http://localhost:3000` for a server on this computer.
 
 - `src/editor`: the document model. `extensions.ts` lists the blocks,
   `blocks.ts` what the slash menu offers, `callout.ts` and `toggle.ts` the
@@ -63,8 +87,16 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - `src/lib/project.ts`: a project as a folder of pages, and the `ProjectStore`
   that keeps it. `browser-store.ts` is the store for the browser,
   `desktop-store.ts` the one for the desktop app.
+- `src/lib/project-doc.ts`: a project as the server keeps it, one Yjs
+  document in the layout of Polemic's projects. `server.ts` is the server's
+  API, `link-sync.ts` the desktop app's sync of a folder with the account,
+  `server-store.ts` the store for a project open in the browser.
 - `src-tauri`: the desktop app. `src/project.rs` reads and writes the
-  project's folder.
+  project's folder, `src/account.rs` signs in and sends the requests to the
+  server, `src/link.rs` remembers which project a folder syncs with.
+- `docker/web`: the image of the browser build, which the **Web image**
+  workflow pushes to `ghcr.io/dwarsbit/cursive-web`.
+- [docs/releasing.md](docs/releasing.md): how a release is made.
 - `src/index.css`: the Polemic design tokens with Cursive's indigo as the one
   tint, and the styles of the blocks.
 

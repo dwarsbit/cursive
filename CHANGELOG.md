@@ -11,3 +11,8 @@
 - Keep a project as pages in folders: the sidebar lists them as a tree, where you add, open and delete pages and folders. A page's file is named after its title.
 - See and edit a page's properties under its title. They are the front matter of its file: text, or a list such as tags.
 - Open a folder on your computer as a project in the desktop app. Each page is a Markdown file in it, saved as you type, and a page or folder you delete moves to the trash.
+- Sign in to your Polemic account in the desktop app, from the Account button. The sign-in happens in your browser, and Cursive keeps it in your system's credential store.
+- Sync a project folder to your account. Changes travel both ways, also the ones you made offline, and two changes to the same page are both kept.
+- Open a project from your account in an empty folder on another computer.
+- Publish a project as a site with the Publish button: choose its address, publish again to bring it up to date, or unpublish it.
+- Open and edit your projects in a browser, at `/cursive` on the Polemic server. What you type is saved to your account as you type.
