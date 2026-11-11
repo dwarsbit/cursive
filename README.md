@@ -28,8 +28,14 @@ interface kit, account and server with [Polemic](https://github.com/dwarsbit/pol
   Cmd/Ctrl + /. Markdown mode shows the page as its file, with the title in
   the front matter.
 
-The page is kept in your browser for now. Projects as folders of `.md` files,
-the page tree and the desktop app come next.
+- **Page tree**: a project is pages in folders. The sidebar lists them, and
+  you add, open and delete pages and folders there. A page's file is named
+  after its title.
+- **Page properties**: the front matter of a page's file shows under its
+  title, as text or as a list such as tags.
+
+The project is kept in your browser for now. The desktop app, which keeps a
+project as a folder of `.md` files on your disk, comes next.
 
 ## Development
 
@@ -49,6 +55,8 @@ pnpm build
   blocks Cursive adds with their Markdown form.
 - `src/components`: the two editors and their menus.
 - `src/lib/page-file.ts`: a page as a Markdown file with front matter.
+- `src/lib/project.ts`: a project as a folder of pages, and the `ProjectStore`
+  that keeps it. `browser-store.ts` is the store for the browser.
 - `src/index.css`: the Polemic design tokens with Cursive's indigo as the one
   tint, and the styles of the blocks.
 

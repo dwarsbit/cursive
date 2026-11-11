@@ -75,8 +75,6 @@ export function Editor({
     editorProps: {
       attributes: { class: "doc", "aria-label": "Page", spellcheck: "true" },
     },
-    onCreate: ({ editor: e }) =>
-      onChangeRef.current({ markdown: tidyMarkdown(e.getMarkdown()) }),
     onUpdate: ({ editor: e, transaction }) => {
       onChangeRef.current({ markdown: tidyMarkdown(e.getMarkdown()) });
       // A new equation is empty: open its field right away.

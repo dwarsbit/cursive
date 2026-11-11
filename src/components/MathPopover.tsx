@@ -74,29 +74,21 @@ export function MathPopover({
     const end = target.pos + current.nodeSize;
     if (!latex.trim()) {
       // An equation left empty is removed again.
-      const chain = editor.chain().deleteRange({ from: target.pos, to: end });
-      (how === "outside" ? chain : chain.focus()).run();
+      editor.commands.deleteRange({ from: target.pos, to: end });
     } else if (how === "escape") {
-      editor.chain().setNodeSelection(target.pos).focus().run();
+      editor.commands.setNodeSelection(target.pos);
     } else if (how === "enter" && target.kind === "inlineMath") {
-      editor.chain().setTextSelection(end).focus().run();
+      editor.commands.setTextSelection(end);
     } else if (how === "enter") {
       const next = editor.state.doc.nodeAt(end);
-      if (next?.type.name === "paragraph" && next.content.size === 0) {
-        editor
-          .chain()
-          .setTextSelection(end + 1)
-          .focus()
-          .run();
-      } else {
-        editor
-          .chain()
-          .insertContentAt(end, { type: "paragraph" })
-          .setTextSelection(end + 1)
-          .focus()
-          .run();
+      const chain = editor.chain();
+      if (next?.type.name !== "paragraph" || next.content.size > 0) {
+        chain.insertContentAt(end, { type: "paragraph" });
       }
+      chain.setTextSelection(end + 1).run();
     }
+    // The page takes the keys again at once, so nothing typed is lost.
+    if (how !== "outside") editor.view.focus();
   };
   const onOutside = useEffectEvent(() => finish("outside"));
   useEffect(() => {

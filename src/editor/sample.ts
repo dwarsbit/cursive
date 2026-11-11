@@ -1,7 +1,13 @@
-/** The page a new visitor starts with: one of each block. */
-export const SAMPLE_TITLE = "Pilot study plan";
+import type { Project } from "@/lib/project";
 
-export const SAMPLE_MARKDOWN = `We run the pilot with **40 students** from the second-year methods course, two weeks before the main survey. The goal is to check *timing, wording and drop-off*, not to estimate effects.
+const PILOT = `---
+title: Pilot study plan
+tags: [methods, survey, chapter 3]
+status: In progress
+pilot-date: 2026-11-18
+---
+
+We run the pilot with **40 students** from the second-year methods course, two weeks before the main survey. The goal is to check *timing, wording and drop-off*, not to estimate effects.
 
 > [!note]
 > Ethics approval came through on 4 November. Quote reference \`ERB-2026-118\` on the consent form and in the invitation email.
@@ -53,3 +59,47 @@ score <- function(df) {
 }
 \`\`\`
 `;
+
+/** The project a new visitor starts with: a few pages, one with every block. */
+export const SAMPLE_PAGE = "Thesis/Pilot study plan.md";
+
+export const SAMPLE_PROJECT: Project = {
+  name: "Research notes",
+  folders: ["Thesis", "Thesis/Literature", "Meeting notes"],
+  pages: {
+    [SAMPLE_PAGE]: PILOT,
+    "Thesis/Chapter outline.md": `---
+title: Chapter outline
+status: Draft
+---
+
+1. Introduction
+2. Related work
+3. Methods
+4. Results
+5. Discussion
+`,
+    "Thesis/Literature/Survey fatigue.md": `---
+title: Survey fatigue
+tags: [literature]
+---
+
+Respondents answer with less care as a questionnaire goes on. Short instruments and a clear end help.
+`,
+    "Meeting notes/Supervisor, 4 November.md": `---
+title: Supervisor, 4 November
+---
+
+- Ethics approval is in.
+- Pilot the timing, not the hypotheses.
+- [ ] Send the shortened questionnaire by Friday
+`,
+    "Reading list.md": `---
+title: Reading list
+---
+
+- [ ] Smith 2024
+- [ ] Okafor and Lind 2023
+`,
+  },
+};

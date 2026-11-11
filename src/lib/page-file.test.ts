@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countWords } from "./draft";
+import { countWords } from "./prefs";
 import { plainText, readPage, tidyMarkdown, writePage } from "./page-file";
 
 describe("readPage", () => {

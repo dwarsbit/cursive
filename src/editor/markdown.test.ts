@@ -2,7 +2,8 @@
 import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 import { documentExtensions } from "./extensions";
-import { SAMPLE_MARKDOWN } from "./sample";
+import { readPage } from "@/lib/page-file";
+import { SAMPLE_PAGE, SAMPLE_PROJECT } from "./sample";
 
 function editorFor(markdown: string) {
   return new Editor({
@@ -68,7 +69,8 @@ describe("Markdown round trip", () => {
   });
 
   it("writes the sample page the same way twice", () => {
-    const once = editorFor(SAMPLE_MARKDOWN).getMarkdown();
+    const sample = readPage(SAMPLE_PROJECT.pages[SAMPLE_PAGE]).markdown;
+    const once = editorFor(sample).getMarkdown();
     expect(editorFor(once).getMarkdown()).toBe(once);
     expect(once).toContain("> [!note]");
     expect(once).toContain("<details open>");
