@@ -41,6 +41,7 @@ export function browserStore(seed: Project): ProjectStore {
   };
 
   return {
+    place: "browser",
     load: async () => read(),
     writePage: async (path, source) => {
       const current = read();

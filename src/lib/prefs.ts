@@ -24,6 +24,10 @@ export const saveMode = (mode: Mode) => remember("cursive.mode", mode);
 export const loadOpenPage = () => recall("cursive.page");
 export const saveOpenPage = (path: string) => remember("cursive.page", path);
 
+/** The project folder the desktop app had open last. */
+export const loadFolder = () => recall("cursive.folder");
+export const saveFolder = (path: string) => remember("cursive.folder", path);
+
 export function loadClosedFolders(): string[] {
   try {
     const value: unknown = JSON.parse(recall("cursive.closed") ?? "[]");

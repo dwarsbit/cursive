@@ -14,6 +14,8 @@ export interface Project {
 
 /** Where a project is kept: the browser today, a folder on disk in the desktop app. */
 export interface ProjectStore {
+  /** Where the project is kept, for the status bar and the delete question. */
+  place: "browser" | "disk";
   load(): Promise<Project>;
   writePage(path: string, source: string): Promise<void>;
   createFolder(path: string): Promise<void>;

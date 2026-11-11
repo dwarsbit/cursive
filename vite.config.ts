@@ -11,6 +11,12 @@ export default defineConfig({
       { find: "@", replacement: fileURLToPath(new URL("./src", import.meta.url)) },
     ],
   },
-  // The port the desktop build will expect; Polemic uses 1420.
-  server: { port: 1430, strictPort: true },
+  // The desktop app loads the dev server from a fixed port, and its
+  // Rust errors stay on screen.
+  clearScreen: false,
+  server: {
+    port: 1430,
+    strictPort: true,
+    watch: { ignored: ["**/src-tauri/**"] },
+  },
 });

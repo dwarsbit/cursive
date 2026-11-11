@@ -10,3 +10,4 @@
 - Switch between Visual and Markdown mode with the buttons in the header or Cmd/Ctrl + /. Markdown mode shows the page as its file, with the title in the front matter.
 - Keep a project as pages in folders: the sidebar lists them as a tree, where you add, open and delete pages and folders. A page's file is named after its title.
 - See and edit a page's properties under its title. They are the front matter of its file: text, or a list such as tags.
+- Open a folder on your computer as a project in the desktop app. Each page is a Markdown file in it, saved as you type, and a page or folder you delete moves to the trash.

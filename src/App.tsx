@@ -37,6 +37,20 @@ const MODES: Array<{ id: Mode; label: string; hint: string }> = [
   { id: "markdown", label: "Markdown", hint: "The page as its Markdown file" },
 ];
 
+/** What deleting a page or folder does, said before it happens. */
+function deleteQuestion(node: TreeNode, place: ProjectStore["place"]): string {
+  const pages = countPages(node);
+  const what =
+    node.kind === "page"
+      ? "The page is"
+      : pages === 0
+        ? "The folder is"
+        : `The folder and the ${pages === 1 ? "page" : `${pages} pages`} in it are`;
+  return place === "disk"
+    ? `${what} moved to the trash on your computer.`
+    : `${what} removed from this project. You can't undo this.`;
+}
+
 /** The first page of a tree, top to bottom. */
 function firstPage(nodes: TreeNode[]): string | null {
   for (const node of nodes) {
@@ -49,9 +63,13 @@ function firstPage(nodes: TreeNode[]): string | null {
 export default function App({
   store,
   firstOpen,
+  onSwitchProject,
 }: {
   store: ProjectStore;
+  /** The page a new visitor sees first. */
   firstOpen?: string;
+  /** Opens another project, where the app can. */
+  onSwitchProject?: () => void;
 }) {
   const [project, setProject] = useState<Project | null>(null);
   const [active, setActive] = useState<string | null>(null);
@@ -78,7 +96,8 @@ export default function App({
         setProject(loaded);
         setActive(wanted ?? firstPage(tree));
       },
-      (error: unknown) => current && setProblem(String(error)),
+      (error: unknown) =>
+        current && setProblem(error instanceof Error ? error.message : String(error)),
     );
     return () => {
       current = false;
@@ -229,12 +248,24 @@ export default function App({
 
   if (!project) {
     return (
-      <p
-        className="grid h-full place-items-center text-sm text-muted-foreground"
-        role="status"
-      >
-        {problem ?? "Opening your project…"}
-      </p>
+      <div className="grid h-full place-items-center p-6 text-center">
+        <div>
+          <p className="text-sm text-muted-foreground" role="status">
+            {problem
+              ? `This project can't be opened: ${problem}`
+              : "Opening your project…"}
+          </p>
+          {problem && onSwitchProject && (
+            <button
+              type="button"
+              onClick={onSwitchProject}
+              className="mt-3 h-8 rounded-md border bg-background px-3 text-[13px] font-medium hover:bg-muted"
+            >
+              Open another folder…
+            </button>
+          )}
+        </div>
+      </div>
     );
   }
 
@@ -253,6 +284,7 @@ export default function App({
         onRename={setRenaming}
         onRenameFolder={renameFolder}
         onDelete={setDeleting}
+        onSwitchProject={onSwitchProject}
       />
       <div className="scrim" onClick={() => setNavOpen(false)} />
 
@@ -369,7 +401,11 @@ export default function App({
               className={`size-1.5 flex-none rounded-full ${problem ? "bg-warning" : "bg-success"}`}
             />
             <span className="truncate">
-              {problem ? `Not saved. ${problem}` : "Saved in this browser"}
+              {problem
+                ? `Not saved. ${problem}`
+                : store.place === "disk"
+                  ? "Saved"
+                  : "Saved in this browser"}
             </span>
           </span>
           {active && <span className="path truncate font-mono">{active}</span>}
@@ -385,13 +421,7 @@ export default function App({
       {deleting && (
         <ConfirmDialog
           title={`Delete “${deleting.label}”?`}
-          body={
-            deleting.kind === "page"
-              ? "The page is removed from this project. You can't undo this."
-              : countPages(deleting) === 0
-                ? "The folder is removed from this project. You can't undo this."
-                : `The folder and the ${countPages(deleting) === 1 ? "page" : `${countPages(deleting)} pages`} in it are removed from this project. You can't undo this.`
-          }
+          body={deleteQuestion(deleting, store.place)}
           confirmLabel="Delete"
           onCancel={() => setDeleting(null)}
           onConfirm={() => {

@@ -34,20 +34,25 @@ interface kit, account and server with [Polemic](https://github.com/dwarsbit/pol
 - **Page properties**: the front matter of a page's file shows under its
   title, as text or as a list such as tags.
 
-The project is kept in your browser for now. The desktop app, which keeps a
-project as a folder of `.md` files on your disk, comes next.
+- **Desktop app**: open a folder on your computer as a project. Each page is
+  a `.md` file in it, saved as you type, and a page or folder you delete
+  moves to the trash. In the browser, the project is kept in the browser.
 
 ## Development
 
 Cursive is a React app built with Vite, on Tiptap for the editor and Tailwind
-for the styles. You need Node 22 and pnpm.
+for the styles. The desktop app is a Tauri shell around it. You need Node 22
+and pnpm, and for the desktop app Rust and the
+[Tauri prerequisites](https://tauri.app/start/prerequisites/).
 
 ```sh
 pnpm install
-pnpm dev      # http://localhost:1430
+pnpm dev          # the browser app at http://localhost:1430
+pnpm tauri dev    # the desktop app
 pnpm test
 pnpm lint
 pnpm build
+cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
 - `src/editor`: the document model. `extensions.ts` lists the blocks,
@@ -56,7 +61,10 @@ pnpm build
 - `src/components`: the two editors and their menus.
 - `src/lib/page-file.ts`: a page as a Markdown file with front matter.
 - `src/lib/project.ts`: a project as a folder of pages, and the `ProjectStore`
-  that keeps it. `browser-store.ts` is the store for the browser.
+  that keeps it. `browser-store.ts` is the store for the browser,
+  `desktop-store.ts` the one for the desktop app.
+- `src-tauri`: the desktop app. `src/project.rs` reads and writes the
+  project's folder.
 - `src/index.css`: the Polemic design tokens with Cursive's indigo as the one
   tint, and the styles of the blocks.
 

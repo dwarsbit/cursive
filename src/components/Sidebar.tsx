@@ -1,4 +1,12 @@
-import { ChevronRight, FileText, Folder, FolderPlus, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  FileText,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { countPages, type TreeNode } from "@/lib/project";
@@ -19,6 +27,8 @@ export interface SidebarProps {
   onRename: (path: string | null) => void;
   onRenameFolder: (path: string, name: string) => void;
   onDelete: (node: TreeNode) => void;
+  /** Opens another project; only where the app can. */
+  onSwitchProject?: () => void;
 }
 
 function RowButton({
@@ -195,6 +205,17 @@ export function Sidebar(props: SidebarProps) {
           C
         </span>
         <span className="min-w-0 flex-1 truncate">{props.projectName}</span>
+        {props.onSwitchProject && (
+          <button
+            type="button"
+            aria-label="Open another folder…"
+            title="Open another folder…"
+            onClick={props.onSwitchProject}
+            className="grid size-6 flex-none place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <FolderOpen className="size-3.5" aria-hidden />
+          </button>
+        )}
       </div>
 
       <div className="flex h-6 items-center justify-between px-2 pt-3 pb-1 text-xs font-medium text-muted-foreground">
