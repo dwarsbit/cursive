@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Editor } from "@tiptap/core";
+import { Editor, type JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 import { BLOCKS } from "./blocks";
 import { documentExtensions } from "./extensions";
@@ -71,9 +71,11 @@ describe("insertBlock", () => {
       range,
       BLOCKS.find((item) => item.id === "table")!,
     );
-    const table = editor.getJSON().content?.find((node) => node.type === "table");
-    expect(table?.content).toHaveLength(3);
-    expect(table?.content?.[0].content?.map((cell) => cell.type)).toEqual([
+    const doc: JSONContent = editor.getJSON();
+    const table = doc.content?.find((node) => node.type === "table");
+    const rows: JSONContent[] = table?.content ?? [];
+    expect(rows).toHaveLength(3);
+    expect(rows[0].content?.map((cell: JSONContent) => cell.type)).toEqual([
       "tableHeader",
       "tableHeader",
       "tableHeader",
