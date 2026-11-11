@@ -18,6 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # First, as in Polemic's CI: after the Node steps the runner could not
+      # resolve the package mirrors. Capped at ten minutes so a stalled
+      # mirror doesn't hold the job until it times out.
+      - name: Install the desktop app's build dependencies
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev patchelf
+
       - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v7
@@ -36,15 +45,6 @@ jobs:
 
       - name: Build
         run: pnpm build
-
-      # The package mirrors sometimes stop answering. Retry, and give up
-      # after ten minutes instead of holding the job until it times out.
-      - name: Install the desktop app's build dependencies
-        timeout-minutes: 10
-        run: |
-          apt="sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
-          $apt update
-          $apt install -y --no-install-recommends libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev patchelf
 
       - uses: dtolnay/rust-toolchain@stable
 
