@@ -907,6 +907,376 @@
   }
 }
 
+/* ---------- Presentation ----------
+   A slide is laid out at 960 by 540 and scaled to the box that shows
+   it, so the sizes below are the same in a thumbnail, on the stage and
+   on a projector, and "fits" means the same everywhere. */
+.slide {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--card-foreground);
+}
+.slide-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 960px;
+  height: 540px;
+  padding: 53px 62px 58px;
+  transform-origin: 0 0;
+  transform: scale(var(--slide-scale, 1));
+}
+.slide-body {
+  flex: 1;
+  min-height: 0;
+  overflow: clip;
+}
+.slide-body > div {
+  height: 100%;
+}
+.slide .doc {
+  min-height: 100%;
+  font-size: 21px;
+  line-height: 1.45;
+}
+.slide .doc > * {
+  margin-block: 8px;
+}
+.slide .doc h1,
+.slide .doc h2 {
+  margin: 0 0 20px;
+  font-size: 37px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.slide .doc h3 {
+  margin: 14px 0 4px;
+}
+.slide .doc li {
+  margin-block: 6px;
+}
+.slide .doc li::marker {
+  color: var(--tint);
+}
+.slide .doc table {
+  font-size: 0.8em;
+}
+.slide .doc th {
+  font-size: 0.9em;
+}
+.slide .doc .code-block pre,
+.slide .doc pre {
+  font-size: 15px;
+}
+.slide-small .doc {
+  font-size: 17px;
+}
+.slide-small .doc h1,
+.slide-small .doc h2 {
+  margin-bottom: 14px;
+  font-size: 32px;
+}
+.slide-foot {
+  position: absolute;
+  right: 62px;
+  bottom: 24px;
+  left: 62px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Title: everything in the middle, under a short rule. */
+.slide-title .doc,
+.slide-quote .doc {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.slide-title .doc::before {
+  content: "";
+  flex: none;
+  width: 58px;
+  height: 4px;
+  margin-bottom: 14px;
+  border-radius: 4px;
+  background: var(--tint);
+}
+.slide-title .doc h1,
+.slide-title .doc h2 {
+  max-width: 80%;
+  margin: 0 0 12px;
+  font-size: 52px;
+}
+.slide-title .doc > p {
+  font-size: 19px;
+  color: var(--muted-foreground);
+}
+/* A line above the title: the occasion. */
+.slide-title .doc > p:has(~ :is(h1, h2)) {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tint-foreground);
+}
+
+/* Big number: heading 1 is the figure, in the middle of what the heading leaves. */
+.slide-big .doc {
+  display: flex;
+  flex-direction: column;
+}
+.slide-big .doc > h2:first-child,
+.slide-big .doc > :last-child {
+  margin-bottom: auto;
+}
+.slide-big .doc h1 {
+  margin: 0 0 14px;
+  font-size: 125px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--tint);
+  font-variant-numeric: tabular-nums;
+}
+.slide-big .doc > p {
+  max-width: 60%;
+  font-size: 22px;
+}
+
+/* Quote: the quote large, who said it small under it. */
+.slide-quote .doc blockquote {
+  max-width: 85%;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+  font-size: 35px;
+  line-height: 1.3;
+  font-weight: 500;
+  text-wrap: balance;
+}
+.slide-quote .doc blockquote > p:first-child::before {
+  content: "“";
+  color: var(--tint);
+}
+.slide-quote .doc blockquote > p:first-child::after {
+  content: "”";
+  color: var(--tint);
+}
+.slide-quote .doc blockquote > p + p,
+.slide-quote .doc > p {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+
+/* The slides in the sidebar. */
+.thumbs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 4px 8px 0 !important;
+}
+.thumb {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+}
+.thumb-number {
+  padding-top: 2px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.thumb-frame {
+  display: block;
+  padding: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border);
+  text-align: left;
+}
+.thumb-frame .slide {
+  pointer-events: none;
+  user-select: none;
+}
+.thumb:hover .thumb-frame {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 25%, transparent);
+}
+.thumb-active .thumb-frame,
+.thumb-active:hover .thumb-frame {
+  box-shadow: 0 0 0 2px var(--tint);
+}
+.thumb-active .thumb-number {
+  color: var(--tint-foreground);
+  font-weight: 600;
+}
+.thumb-drop .thumb-frame {
+  box-shadow: 0 0 0 2px var(--tint-edge);
+}
+/* A slide that holds more than fits says so in its corner. */
+.thumb-frame .slide-over::after {
+  content: "!";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--warning);
+  color: var(--background);
+  font-size: 11px;
+  font-weight: 700;
+}
+.thumb-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: var(--popover);
+  color: var(--muted-foreground);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.thumb-delete:hover {
+  color: var(--foreground);
+}
+.thumb:hover .thumb-delete,
+.thumb-delete:focus-visible {
+  display: grid;
+}
+
+/* The stage: the slide being worked on. */
+.stage-wrap {
+  min-height: 100%;
+  background: color-mix(in srgb, var(--muted) 70%, var(--card));
+}
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+}
+.stage > .slide {
+  border-radius: 8px;
+  box-shadow:
+    0 1px 3px oklch(14.5% 0.008 326 / 8%),
+    0 0 0 1px var(--border);
+}
+.stage > .slide-over::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 18%;
+  border-bottom: 3px solid var(--warning);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--warning) 22%, transparent)
+  );
+  pointer-events: none;
+}
+.fit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--border);
+  font-size: 12px;
+}
+.fit-pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.fit-pill-over {
+  background: color-mix(in srgb, var(--warning) 12%, var(--card));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--warning) 40%, transparent);
+}
+.fit-pill-over::before {
+  background: var(--warning);
+}
+
+/* Presenting: one slide on a black screen. */
+.presenter {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: #000;
+  outline: none;
+  cursor: default;
+}
+.presenter > .slide {
+  width: min(100vw, calc(100vh * 16 / 9));
+  border-radius: 0;
+}
+.presenter-close,
+.presenter-count {
+  position: fixed;
+  color: #fff;
+  font-size: 12px;
+}
+.presenter-close {
+  top: 12px;
+  right: 12px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 12%);
+  opacity: 0.6;
+}
+.presenter-close:hover {
+  opacity: 1;
+}
+.presenter-count {
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0.5;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .stage {
+    padding: 16px 16px 40px;
+  }
+  .thumb-delete {
+    display: grid;
+  }
+}
+@media (max-width: 520px) {
+  .present-label {
+    display: none;
+  }
+}
+
 /* ---------- Tutorial blocks: quiz and assignment, each a framed form ---------- */
 .doc .tutorial-block {
   margin: 10px 0;

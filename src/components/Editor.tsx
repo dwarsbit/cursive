@@ -4,9 +4,11 @@ import { DragHandle } from "@tiptap/extension-drag-handle-react";
 import { BlockMath, InlineMath } from "@tiptap/extension-mathematics";
 import { Placeholder } from "@tiptap/extensions";
 import type { Node as ProseNode } from "@tiptap/pm/model";
+import type { Editor as TiptapEditor } from "@tiptap/core";
 import { EditorContent, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
 import { GripVertical, Plus } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { documentExtensions, lowlight } from "@/editor/extensions";
 import { createSlashController, Slash } from "@/editor/slash";
 import { tidyMarkdown } from "@/lib/page-file";
@@ -47,12 +49,21 @@ export function Editor({
   markdown,
   onChange,
   focusRef,
+  editorRef,
+  inSlide = false,
 }: {
   /** The page when the editor opens; later edits live in the editor. */
   markdown: string;
   onChange: (change: EditorChange) => void;
   /** Filled with a function that puts the caret at the start of the page. */
   focusRef?: React.RefObject<(() => void) | null>;
+  /** Filled with the editor, for whoever works on its blocks from outside. */
+  editorRef?: React.RefObject<TiptapEditor | null>;
+  /**
+   * The page is a slide: it is drawn scaled, so its menus hang from
+   * the window and not from the page, and blocks have no handle.
+   */
+  inSlide?: boolean;
 }) {
   const [math, setMath] = useState<MathTarget | null>(null);
   const [controller] = useState(createSlashController);
@@ -99,7 +110,11 @@ export function Editor({
     content: markdown,
     contentType: "markdown",
     editorProps: {
-      attributes: { class: "doc", "aria-label": "Page", spellcheck: "true" },
+      attributes: {
+        class: "doc",
+        "aria-label": inSlide ? "Slide" : "Page",
+        spellcheck: "true",
+      },
     },
     onUpdate: ({ editor: e, transaction }) => {
       onChangeRef.current({ markdown: tidyMarkdown(e.getMarkdown()) });
@@ -116,7 +131,8 @@ export function Editor({
 
   useEffect(() => {
     if (focusRef) focusRef.current = () => editor.commands.focus("start");
-  }, [editor, focusRef]);
+    if (editorRef) editorRef.current = editor;
+  }, [editor, focusRef, editorRef]);
 
   /** The + on a block: a new line under it with the slash menu open. */
   const addBelow = () => {
@@ -140,6 +156,30 @@ export function Editor({
       .insertContent("/")
       .run();
   };
+
+  const menus = (
+    <>
+      {slash && <SlashMenu state={slash} controller={controller} />}
+      {math && (
+        <MathPopover
+          key={`${math.kind}:${math.pos}`}
+          editor={editor}
+          target={math}
+          onClose={() => setMath(null)}
+        />
+      )}
+    </>
+  );
+
+  if (inSlide) {
+    return (
+      <>
+        <EditorContent editor={editor} />
+        <SelectionToolbar editor={editor} appendTo={() => document.body} />
+        {createPortal(menus, document.body)}
+      </>
+    );
+  }
 
   return (
     <>
@@ -169,15 +209,7 @@ export function Editor({
       </DragHandle>
       <EditorContent editor={editor} />
       <SelectionToolbar editor={editor} />
-      {slash && <SlashMenu state={slash} controller={controller} />}
-      {math && (
-        <MathPopover
-          key={`${math.kind}:${math.pos}`}
-          editor={editor}
-          target={math}
-          onClose={() => setMath(null)}
-        />
-      )}
+      {menus}
     </>
   );
 }
