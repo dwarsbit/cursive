@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatProperties,
+  normalizeLink,
   parseProperties,
   propertyKey,
   propertyLabel,
@@ -15,7 +16,29 @@ describe("parseProperties", () => {
     ).toEqual([
       { kind: "list", key: "tags", value: ["methods", "survey", "chapter 3"] },
       { kind: "text", key: "status", value: "In progress" },
-      { kind: "text", key: "pilot-date", value: "2026-11-18" },
+      { kind: "date", key: "pilot-date", value: "2026-11-18" },
+    ]);
+  });
+
+  it("reads dates, numbers, links and true or false", () => {
+    expect(
+      parseProperties(
+        "due: 2026-12-01\npages: 12\nweight: 0.5\nsource: https://example.org/a?b=1\ndone: true\ndraft: False",
+      ),
+    ).toEqual([
+      { kind: "date", key: "due", value: "2026-12-01" },
+      { kind: "number", key: "pages", value: "12" },
+      { kind: "number", key: "weight", value: "0.5" },
+      { kind: "link", key: "source", value: "https://example.org/a?b=1" },
+      { kind: "boolean", key: "done", value: true },
+      { kind: "boolean", key: "draft", value: false },
+    ]);
+  });
+
+  it("reads quoted values as text, whatever they look like", () => {
+    expect(parseProperties('year: "2026"\nflag: "true"')).toEqual([
+      { kind: "text", key: "year", value: "2026" },
+      { kind: "text", key: "flag", value: "true" },
     ]);
   });
 
@@ -49,11 +72,39 @@ describe("formatProperties", () => {
     'tags: ["x, y", z]',
     "empty:",
     'flag: "true"',
+    "due: 2026-12-01\npages: 12\nsource: https://example.org\ndone: false",
+    'year: "2026"',
   ]) {
     it(`writes ${JSON.stringify(raw)} back the same`, () => {
       expect(formatProperties(parseProperties(raw))).toBe(raw);
     });
   }
+});
+
+describe("formatProperties with kinds", () => {
+  it("quotes text that would read as another kind", () => {
+    expect(
+      formatProperties([
+        { kind: "text", key: "year", value: "2026" },
+        { kind: "text", key: "site", value: "https://example.org" },
+      ]),
+    ).toBe('year: "2026"\nsite: "https://example.org"');
+  });
+
+  it("writes a value that doesn't fit its kind as text", () => {
+    expect(formatProperties([{ kind: "number", key: "pages", value: "a few" }])).toBe(
+      "pages: a few",
+    );
+    expect(formatProperties([{ kind: "boolean", key: "done", value: true }])).toBe(
+      "done: true",
+    );
+  });
+
+  it("adds https:// to a link without a scheme", () => {
+    expect(normalizeLink("example.org")).toBe("https://example.org");
+    expect(normalizeLink("mailto:a@b.org")).toBe("mailto:a@b.org");
+    expect(normalizeLink("")).toBe("");
+  });
 });
 
 describe("property names", () => {

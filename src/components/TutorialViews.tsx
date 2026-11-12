@@ -37,7 +37,7 @@ export function Frame({
       className={`tutorial-block${selected ? " is-selected" : ""}`}
       contentEditable={false}
     >
-      <div className="tb-head" data-drag-handle>
+      <div className="tb-head">
         <span className="tb-kind">
           {icon}
           {kind}

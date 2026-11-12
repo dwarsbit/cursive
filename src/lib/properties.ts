@@ -1,13 +1,40 @@
 /**
  * Page properties: the front matter's lines other than the title, as
- * the editor shows them. A value is text or a list of short texts
- * (`tags: [methods, survey]`). Lines the editor doesn't understand,
- * such as nested YAML, are kept as written and not shown.
+ * the editor shows them. A value is text, a date (`2026-11-12`), a
+ * number, a link, true or false, or a list of short texts
+ * (`tags: [methods, survey]`). The kind follows from how the value is
+ * written; quoted values are always text. Lines the editor doesn't
+ * understand, such as nested YAML, are kept as written and not shown.
  */
+export type ScalarKind = "text" | "date" | "number" | "link";
 export type Property =
-  | { kind: "text"; key: string; value: string }
+  | { kind: ScalarKind; key: string; value: string }
+  | { kind: "boolean"; key: string; value: boolean }
   | { kind: "list"; key: string; value: string[] }
   | { kind: "raw"; line: string };
+
+export type PropertyKind = Exclude<Property["kind"], "raw">;
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const NUMBER = /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+const LINK = /^(?:https?:\/\/|mailto:)\S+$/i;
+const BOOLEAN = /^(?:true|false)$/i;
+
+/** The kind of an unquoted value, as YAML and the editor read it. */
+function kindOf(value: string): ScalarKind | "boolean" {
+  if (BOOLEAN.test(value)) return "boolean";
+  if (DATE.test(value)) return "date";
+  if (NUMBER.test(value)) return "number";
+  if (LINK.test(value)) return "link";
+  return "text";
+}
+
+/** A link as typed, with `https://` added where it has no scheme. */
+export function normalizeLink(value: string): string {
+  const link = value.trim();
+  if (!link || /^[a-z][a-z\d+.-]*:/i.test(link)) return link;
+  return `https://${link}`;
+}
 
 const KEY_LINE = /^([A-Za-z0-9_][\w .-]*?):(?:[ \t]+(.*))?$/;
 
@@ -51,8 +78,10 @@ function splitList(inner: string): string[] {
 }
 
 function quote(value: string, inList: boolean): string {
+  // Text that would read as another kind is quoted, so it stays text.
   const plain =
     value !== "" &&
+    (inList || kindOf(value) === "text") &&
     value === value.trim() &&
     !/^[-?:,[\]{}#&*!|>'"%@`]/.test(value) &&
     !/: |:$| #|[\n\r\t"\\]/.test(value) &&
@@ -80,8 +109,15 @@ export function parseProperties(raw: string): Property[] {
       properties.push({ kind: "list", key, value: splitList(value.slice(1, -1)) });
     } else if (/^[{|>&*!]/.test(value)) {
       properties.push({ kind: "raw", line });
-    } else {
+    } else if (/^["']/.test(value)) {
       properties.push({ kind: "text", key, value: unquote(value) });
+    } else {
+      const kind = kindOf(value);
+      properties.push(
+        kind === "boolean"
+          ? { kind, key, value: value.toLowerCase() === "true" }
+          : { kind, key, value },
+      );
     }
   }
   return properties;
@@ -94,9 +130,12 @@ export function formatProperties(properties: Property[]): string {
       if (property.kind === "list") {
         return `${property.key}: [${property.value.map((item) => quote(item, true)).join(", ")}]`;
       }
-      return property.value === ""
-        ? `${property.key}:`
-        : `${property.key}: ${quote(property.value, false)}`;
+      if (property.kind === "boolean") return `${property.key}: ${property.value}`;
+      const value = property.value.trim();
+      if (value === "") return `${property.key}:`;
+      // A date, number or link that no longer reads as one is written as text.
+      const plain = property.kind !== "text" && kindOf(value) === property.kind;
+      return `${property.key}: ${plain ? value : quote(property.value, false)}`;
     })
     .join("\n");
 }

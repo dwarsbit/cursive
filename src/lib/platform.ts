@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { isDesktop } from "./desktop-store";
 
 /** True on macOS. */
@@ -36,4 +37,13 @@ export function formatOpened(time: number, now = new Date()): string {
     day: "numeric",
     ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
   });
+}
+
+/** Opens a web address in the browser: the system's, in the desktop app. */
+export function openExternal(url: string): void {
+  if (!isDesktop) {
+    window.open(url, "_blank", "noopener");
+    return;
+  }
+  invoke("open_in_browser", { url }).catch(() => {});
 }

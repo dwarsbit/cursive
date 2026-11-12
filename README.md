@@ -55,9 +55,10 @@ now you run it from the source, as described under [Develop](#develop).
   Markdown, so a page opens in any other Markdown tool. Callouts are quotes
   that open with `[!note]`, toggles are `<details>` elements and equations
   are TeX between `$$`.
-- **Pages and properties**: a project is pages in folders, listed as a tree
-  in the sidebar. The front matter of a page shows under its title, as text
-  or as a list such as tags.
+- **Notes and properties**: a project is notes and presentations in folders,
+  listed as a tree in the sidebar in the order you drag them into. The front
+  matter of a note shows under its title: text, lists such as tags, dates,
+  numbers, checkboxes and links.
 
 ### Present
 
