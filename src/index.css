@@ -1276,3 +1276,238 @@
     display: none;
   }
 }
+
+/* ---------- Tutorial blocks: quiz and assignment, each a framed form ---------- */
+.doc .tutorial-block {
+  margin: 10px 0;
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--border);
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.doc .tutorial-block.is-selected {
+  box-shadow: 0 0 0 2px var(--tint-edge);
+}
+.doc .tb-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--muted) 50%, var(--card));
+  font-size: 12px;
+  color: var(--muted-foreground);
+  cursor: grab;
+  user-select: none;
+}
+.doc .tb-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  color: var(--accent-foreground);
+}
+.doc .tb-kind svg {
+  width: 14px;
+  height: 14px;
+  color: var(--tint);
+}
+.doc .tb-chip {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.doc .tb-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.doc .tb-input {
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  padding: 4px 8px;
+  font: inherit;
+  color: inherit;
+  outline: none;
+}
+.doc .tb-input:hover {
+  background: var(--accent);
+}
+.doc .tb-input:focus {
+  border-color: var(--tint-edge);
+  background: var(--background);
+}
+.doc .tb-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+.doc .tb-question {
+  font-size: 15px;
+  font-weight: 600;
+}
+.doc .tb-text {
+  resize: vertical;
+  border-color: var(--border);
+}
+.doc .tb-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.doc .tb-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 10px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.doc .tb-option.is-correct {
+  background: color-mix(in srgb, var(--success) 9%, var(--card));
+  box-shadow: inset 0 0 0 1.5px var(--success);
+}
+.doc .tb-option input[type="checkbox"] {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--success);
+}
+.doc .tb-option-text {
+  flex: 1;
+}
+.doc .tb-key {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--success);
+  white-space: nowrap;
+}
+.doc .tb-remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--muted-foreground);
+}
+.doc .tb-remove:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.doc .tb-remove:disabled {
+  opacity: 0.3;
+}
+.doc .tb-remove svg {
+  width: 14px;
+  height: 14px;
+}
+.doc .tb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 12px;
+}
+.doc .tb-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  font-weight: 500;
+}
+.doc .tb-button:hover {
+  background: var(--muted);
+}
+.doc .tb-button svg {
+  width: 13px;
+  height: 13px;
+}
+.doc .tb-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-foreground);
+}
+.doc .tb-number,
+.doc .tb-date {
+  height: 26px;
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.doc .tb-number {
+  width: 64px;
+}
+.doc .tb-warning {
+  margin: 0;
+  font-size: 12px;
+  color: var(--warning);
+}
+
+/* ---------- Learners: who signed in to a published tutorial ---------- */
+.learners {
+  max-height: min(50vh, 420px);
+  margin-top: 12px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.learners details {
+  border-bottom: 1px solid var(--border);
+}
+.learners summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+.learners summary::-webkit-details-marker {
+  display: none;
+}
+.learners .who {
+  min-width: 0;
+  flex: 1;
+}
+.learners .who span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.learners .meta {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.learners .work {
+  margin: 2px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--muted);
+}
+.learners .work pre {
+  margin: 4px 0 0;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.confirm:has(.learners) {
+  width: min(36rem, calc(100vw - 2rem));
+}

@@ -1,7 +1,10 @@
 import type { ChainedCommands, Editor } from "@tiptap/core";
 import type { LucideIcon } from "lucide-react";
+import { newAssignment, newQuiz, writeAssignment, writeQuiz } from "@/tutorial/blocks";
 import {
   ChevronRight,
+  CircleHelp,
+  ClipboardList,
   Code,
   Info,
   List,
@@ -19,7 +22,7 @@ export interface BlockItem {
   description: string;
   /** Extra words the slash menu's filter matches. */
   keywords: string[];
-  group: "Basic blocks" | "More blocks";
+  group: "Basic blocks" | "More blocks" | "Tutorial blocks";
   /** The tile: a few letters or an icon. */
   glyph: string | LucideIcon;
   /** The block opens a field of its own, so the caret doesn't go back to the page. */
@@ -182,6 +185,33 @@ export const BLOCKS: BlockItem[] = [
     glyph: Minus,
     turnInto: false,
     run: (chain) => chain.setHorizontalRule(),
+  },
+  {
+    id: "quiz",
+    title: "Quiz",
+    description: "A question with answers to choose from",
+    keywords: ["question", "multiple", "choice", "test", "tutorial"],
+    group: "Tutorial blocks",
+    glyph: CircleHelp,
+    opensField: true,
+    turnInto: false,
+    run: (chain) =>
+      chain.insertContent({ type: "quiz", attrs: { source: writeQuiz(newQuiz()) } }),
+  },
+  {
+    id: "assignment",
+    title: "Assignment",
+    description: "Work that learners hand in",
+    keywords: ["homework", "submit", "task", "exercise", "tutorial"],
+    group: "Tutorial blocks",
+    glyph: ClipboardList,
+    opensField: true,
+    turnInto: false,
+    run: (chain) =>
+      chain.insertContent({
+        type: "assignment",
+        attrs: { source: writeAssignment(newAssignment()) },
+      }),
   },
 ];
 

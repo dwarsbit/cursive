@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BUTTON, Dialog, messageOf, PRIMARY_BUTTON, QUIET_BUTTON } from "./Dialog";
+import { LearnersDialog } from "./LearnersDialog";
 import type { Server, SiteState } from "@/lib/server";
 
 const day = (iso: string) =>
@@ -31,6 +32,7 @@ export function PublishDialog({
   const [slug, setSlug] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [learners, setLearners] = useState(false);
 
   useEffect(() => {
     let current = true;
@@ -75,11 +77,22 @@ export function PublishDialog({
 
   const site = state?.site ?? null;
 
+  if (learners) {
+    return (
+      <LearnersDialog
+        server={server}
+        projectId={projectId}
+        onClose={() => setLearners(false)}
+      />
+    );
+  }
+
   return (
     <Dialog title="Publish this project" onClose={onClose}>
       <p className="mt-1.5 text-[13px] text-muted-foreground">
         Your pages become a site that anyone with the address can read. Publish again to
-        bring the site up to date.
+        bring the site up to date. Pages with a quiz or an assignment make it a
+        tutorial: readers check their answers and track their progress.
       </p>
 
       {state && (
@@ -146,6 +159,16 @@ export function PublishDialog({
             onClick={() => void unpublish()}
           >
             Unpublish
+          </button>
+        )}
+        {site && (
+          <button
+            type="button"
+            className={QUIET_BUTTON}
+            title="Readers who signed in to your tutorial, and the work they handed in"
+            onClick={() => setLearners(true)}
+          >
+            Learners
           </button>
         )}
         <span className="flex-1" />

@@ -17,6 +17,8 @@ describe("filterBlocks", () => {
       "Heading 1",
       "Callout",
       "Equation",
+      "Quiz",
+      "Assignment",
     ]);
   });
 

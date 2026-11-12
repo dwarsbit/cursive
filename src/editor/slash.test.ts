@@ -34,6 +34,8 @@ const EXPECTED: Record<string, string> = {
   code: "codeBlock",
   equation: "blockMath",
   divider: "horizontalRule",
+  quiz: "quiz",
+  assignment: "assignment",
 };
 
 describe("insertBlock", () => {

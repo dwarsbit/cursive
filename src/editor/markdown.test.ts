@@ -40,6 +40,33 @@ describe("Markdown round trip", () => {
       "| 46   | Print 50 copies |",
       "| 47   | Pilot session   |",
     ].join("\n"),
+    quiz: [
+      "```quiz",
+      "id: q1",
+      "question: Which question is double-barrelled?",
+      "options:",
+      "  - How many hours a week do you study?",
+      "  - Was the lecture clear and well paced?",
+      "answer: 2",
+      "points: 2",
+      "attempts: 2",
+      "explanation: It asks about two things at once.",
+      "```",
+    ].join("\n"),
+    "quiz as it was typed":
+      '```quiz\n# my note\nquestion: "Why?"\noptions: [Yes, No]\nanswer: [1]\n```',
+    assignment: [
+      "```assignment",
+      "id: a1",
+      "title: Write five items",
+      "instructions: |-",
+      "  Write five items for a survey.",
+      "",
+      "  Add one sentence on what each measures.",
+      "points: 10",
+      "due: 2026-11-25",
+      "```",
+    ].join("\n"),
   };
 
   for (const [name, markdown] of Object.entries(cases)) {
@@ -75,6 +102,17 @@ describe("Markdown round trip", () => {
     expect(once).toContain("> [!note]");
     expect(once).toContain("<details open>");
     expect(once).toContain("- [x] Translate");
+  });
+
+  it("reads the tutorial blocks as their own nodes", () => {
+    const doc = editorFor([cases.quiz, cases.assignment].join("\n\n")).getJSON();
+    expect(doc.content?.map((node) => node.type)).toEqual(["quiz", "assignment"]);
+  });
+
+  it("keeps a quiz fence that isn't a quiz as code", () => {
+    const markdown = "```quiz\n- only\n- a list\n```";
+    expect(editorFor(markdown).getJSON().content?.[0].type).toBe("codeBlock");
+    expect(roundTrip(markdown)).toBe(markdown);
   });
 
   it("reads a quote that is not a callout as a quote", () => {

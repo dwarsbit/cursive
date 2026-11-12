@@ -21,3 +21,8 @@
 - See when a slide holds more than fits, and split it into two slides or make its text smaller.
 - Present a presentation full screen with the Present button. The arrow keys and a click move between slides, and Esc ends it.
 - A presentation is one Markdown file: slides between dividers, with a slide's layout in a `slide` code block and its notes in a `notes` code block.
+- Add a quiz to a page from the `/` menu: a question, its options, which ones are correct, points, attempts and an explanation. In Markdown it is a `quiz` block with YAML inside.
+- Add an assignment to a page from the `/` menu: a title, instructions, points and a due date. In Markdown it is an `assignment` block with YAML inside.
+- Publish pages with quizzes or assignments as a tutorial: readers check their answers, see their points and mark pages as complete. Their progress is kept in their browser, and the correct answers stay on the server until a quiz is answered.
+- Let readers of a tutorial sign in with a Polemic account to keep their progress in their account and hand in assignments as text. This needs a paid plan on the author's side.
+- See who signed in to your tutorial from Publish → Learners: their completed pages, quiz points and handed-in work.

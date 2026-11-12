@@ -40,6 +40,34 @@ export interface SiteState {
   baseUrl: string;
 }
 
+/** What a learner handed in for an assignment of a published tutorial. */
+export interface Submission {
+  page: string;
+  pageTitle: string;
+  assignment: string;
+  title: string;
+  text: string;
+  submittedAt: string;
+}
+
+/** A reader who signed in to the published tutorial. */
+export interface Learner {
+  id: string;
+  name: string;
+  email: string;
+  pagesDone: number;
+  points: number;
+  lastActiveAt: string;
+  submissions: Submission[];
+}
+
+export interface Learners {
+  /** The published site's pages, and the points its quizzes give. */
+  pages: number;
+  points: number;
+  learners: Learner[];
+}
+
 /** An answer the server gave that isn't success, with its message for the reader. */
 export class ServerError extends Error {
   constructor(
@@ -210,5 +238,10 @@ export class Server {
 
   unpublish(id: string): Promise<void> {
     return this.call("DELETE", `/api/projects/${encodeURIComponent(id)}/site`);
+  }
+
+  /** Who signed in to the project's published tutorial, with their progress and work. */
+  learners(id: string): Promise<Learners> {
+    return this.call("GET", `/api/projects/${encodeURIComponent(id)}/learners`);
   }
 }
