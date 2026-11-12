@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { BUTTON, Dialog, messageOf, PRIMARY_BUTTON, QUIET_BUTTON } from "./Dialog";
 import { LearnersDialog } from "./LearnersDialog";
 import { cn } from "@/lib/cn";
-import type { Server, SiteState } from "@/lib/server";
+import type { SaveFile, Server, SiteState } from "@/lib/server";
 import {
   SITE_THEMES,
   siteThemeOf,
@@ -87,12 +87,14 @@ export function PublishDialog({
   projectId,
   prepare,
   openUrl,
+  saveFile,
   onClose,
 }: {
   server: Server;
   projectId: string;
   prepare?: () => Promise<void>;
   openUrl: (url: string) => void;
+  saveFile: SaveFile;
   onClose: () => void;
 }) {
   const [state, setState] = useState<SiteState | null>(null);
@@ -151,6 +153,7 @@ export function PublishDialog({
       <LearnersDialog
         server={server}
         projectId={projectId}
+        saveFile={saveFile}
         onClose={() => setLearners(false)}
       />
     );

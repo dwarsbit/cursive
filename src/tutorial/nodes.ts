@@ -1,10 +1,10 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import { matchFence, toFence, type TutorialKind } from "./blocks";
+import { matchFence, toFence, TUTORIAL_KINDS, type TutorialKind } from "./blocks";
 
 /**
  * A tutorial block as a node: one unit in the page that holds the
  * fence's YAML as written. The editor draws it as a form
- * (`QuizView`, `AssignmentView`); the YAML only changes when a field does.
+ * (`TutorialViews.tsx`); the YAML only changes when a field does.
  */
 function fenceNode(kind: TutorialKind) {
   return Node.create({
@@ -54,3 +54,8 @@ function fenceNode(kind: TutorialKind) {
 
 export const QuizNode = fenceNode("quiz");
 export const AssignmentNode = fenceNode("assignment");
+
+/** Every tutorial block as a node, in the order of TUTORIAL_KINDS. */
+export const TUTORIAL_NODES = TUTORIAL_KINDS.map((kind) =>
+  kind === "quiz" ? QuizNode : kind === "assignment" ? AssignmentNode : fenceNode(kind),
+);

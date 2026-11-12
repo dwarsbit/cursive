@@ -67,6 +67,24 @@ describe("Markdown round trip", () => {
       "due: 2026-11-25",
       "```",
     ].join("\n"),
+    "assignment with a rubric":
+      "```assignment\nid: a2\ntitle: Plan your pilot\ninstructions: One page.\npoints: 5\nrubric:\n  - criterion: Each item asks about one thing\n    points: 3\n  - criterion: No leading wording\n    points: 2\nfiles: true\n```",
+    "learning goals":
+      "```goals\nitems:\n  - Spot double-barrelled questions\n  - Rewrite a vague item\n```",
+    "key terms":
+      "```terms\nterms:\n  - term: Pilot study\n    definition: A small trial run of a survey.\n```",
+    video:
+      "```video\nurl: https://youtu.be/dQw4w9WgXcQ\ntitle: Spotting double-barrelled questions\n```",
+    "before and after":
+      "```compare\nbefore: How satisfied are you with the content and the teaching?\nafter: |-\n  How satisfied are you with the content?\n\n  How satisfied are you with the teaching?\n```",
+    "fill in the blanks":
+      "```blanks\nid: b1\ntext: A question that pushes toward one answer is a {{leading}} question.\n```",
+    "put in order":
+      "```order\nid: o1\nprompt: Put the steps in order\nitems:\n  - Draft the items\n  - Run a pilot\n  - Field the survey\n```",
+    exercise:
+      "```exercise\nid: e1\nprompt: Rewrite “Do you exercise regularly?”\nhint: What counts as regularly?\nanswer: In the past seven days, on how many days did you exercise?\n```",
+    flashcards:
+      "```flashcards\ncards:\n  - front: Recall period\n    back: The stretch of time a question asks about.\n```",
   };
 
   for (const [name, markdown] of Object.entries(cases)) {
@@ -107,6 +125,34 @@ describe("Markdown round trip", () => {
   it("reads the tutorial blocks as their own nodes", () => {
     const doc = editorFor([cases.quiz, cases.assignment].join("\n\n")).getJSON();
     expect(doc.content?.map((node) => node.type)).toEqual(["quiz", "assignment"]);
+    const more = editorFor(
+      [
+        cases["learning goals"],
+        cases["key terms"],
+        cases.video,
+        cases["before and after"],
+        cases["fill in the blanks"],
+        cases["put in order"],
+        cases.exercise,
+        cases.flashcards,
+      ].join("\n\n"),
+    ).getJSON();
+    expect(more.content?.map((node) => node.type)).toEqual([
+      "goals",
+      "terms",
+      "video",
+      "compare",
+      "blanks",
+      "order",
+      "exercise",
+      "flashcards",
+    ]);
+  });
+
+  it("keeps a fence named like a tutorial block as code when it isn't one", () => {
+    const markdown = "```order\nSELECT * FROM t ORDER BY 1\n```";
+    expect(editorFor(markdown).getJSON().content?.[0].type).toBe("codeBlock");
+    expect(roundTrip(markdown)).toBe(markdown);
   });
 
   it("keeps a quiz fence that isn't a quiz as code", () => {

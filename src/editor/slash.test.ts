@@ -34,7 +34,15 @@ const EXPECTED: Record<string, string> = {
   code: "codeBlock",
   equation: "blockMath",
   divider: "horizontalRule",
+  goals: "goals",
+  terms: "terms",
+  video: "video",
+  compare: "compare",
   quiz: "quiz",
+  blanks: "blanks",
+  order: "order",
+  exercise: "exercise",
+  flashcards: "flashcards",
   assignment: "assignment",
 };
 

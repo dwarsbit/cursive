@@ -3,6 +3,7 @@ import App, { type Status } from "@/App";
 import { BUTTON, HEADER_BUTTON, messageOf, PRIMARY_BUTTON } from "@/components/Dialog";
 import { PublishDialog } from "@/components/PublishDialog";
 import {
+  browserSaveFile,
   browserTransport,
   Server,
   type Account,
@@ -225,6 +226,7 @@ function OpenProject({ id }: { id: string }) {
           server={server}
           projectId={id}
           openUrl={openUrl}
+          saveFile={browserSaveFile}
           onClose={() => setPublishing(false)}
         />
       )}

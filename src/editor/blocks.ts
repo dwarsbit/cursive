@@ -1,18 +1,25 @@
 import type { ChainedCommands, Editor } from "@tiptap/core";
 import type { LucideIcon } from "lucide-react";
-import { newAssignment, newQuiz, writeAssignment, writeQuiz } from "@/tutorial/blocks";
+import { newSource, type TutorialKind } from "@/tutorial/blocks";
 import {
+  BookA,
   ChevronRight,
   CircleHelp,
   ClipboardList,
   Code,
+  Columns2,
   Info,
+  Layers,
   List,
   ListOrdered,
   Minus,
+  PenLine,
+  Play,
   Quote,
   SquareCheck,
   Table,
+  Target,
+  TextCursorInput,
 } from "lucide-react";
 
 /** A block the slash menu and the "Turn into" menu can make. */
@@ -32,6 +39,86 @@ export interface BlockItem {
   isActive?: (editor: Editor) => boolean;
   run: (chain: ChainedCommands) => ChainedCommands;
 }
+
+/** The tutorial blocks, in the order the slash menu lists them. */
+const TUTORIAL: Array<{
+  id: TutorialKind;
+  title: string;
+  description: string;
+  keywords: string[];
+  glyph: LucideIcon;
+}> = [
+  {
+    id: "goals",
+    title: "Learning goals",
+    description: "What a learner can do after this page",
+    keywords: ["objectives", "outcomes", "aims"],
+    glyph: Target,
+  },
+  {
+    id: "terms",
+    title: "Key terms",
+    description: "Terms with their definitions",
+    keywords: ["glossary", "definition", "vocabulary"],
+    glyph: BookA,
+  },
+  {
+    id: "video",
+    title: "Video",
+    description: "A YouTube or Vimeo video, or a video file",
+    keywords: ["youtube", "vimeo", "movie", "clip"],
+    glyph: Play,
+  },
+  {
+    id: "compare",
+    title: "Before and after",
+    description: "A weak version next to a better one",
+    keywords: ["compare", "example", "good", "bad"],
+    glyph: Columns2,
+  },
+  {
+    id: "quiz",
+    title: "Quiz",
+    description: "A question with answers to choose from",
+    keywords: ["question", "multiple", "choice", "test"],
+    glyph: CircleHelp,
+  },
+  {
+    id: "blanks",
+    title: "Fill in the blanks",
+    description: "A text with words to fill in",
+    keywords: ["gap", "cloze", "missing"],
+    glyph: TextCursorInput,
+  },
+  {
+    id: "order",
+    title: "Put in order",
+    description: "Items to sort into the correct order",
+    keywords: ["sort", "sequence", "rank", "steps"],
+    glyph: ListOrdered,
+  },
+  {
+    id: "exercise",
+    title: "Exercise",
+    description: "An open question with a hint and a model answer",
+    keywords: ["practice", "hint", "answer"],
+    glyph: PenLine,
+  },
+  {
+    id: "flashcards",
+    title: "Flashcards",
+    description: "Cards to turn over",
+    keywords: ["cards", "memorize", "flip"],
+    glyph: Layers,
+  },
+  {
+    id: "assignment",
+    title: "Assignment",
+    description: "Work that learners hand in",
+    keywords: ["homework", "submit", "task", "rubric"],
+    glyph: ClipboardList,
+  },
+];
 
 export const BLOCKS: BlockItem[] = [
   {
@@ -186,33 +273,17 @@ export const BLOCKS: BlockItem[] = [
     turnInto: false,
     run: (chain) => chain.setHorizontalRule(),
   },
-  {
-    id: "quiz",
-    title: "Quiz",
-    description: "A question with answers to choose from",
-    keywords: ["question", "multiple", "choice", "test", "tutorial"],
+  ...TUTORIAL.map(({ id, title, description, keywords, glyph }): BlockItem => ({
+    id,
+    title,
+    description,
+    keywords: [...keywords, "tutorial"],
     group: "Tutorial blocks",
-    glyph: CircleHelp,
+    glyph,
     opensField: true,
     turnInto: false,
-    run: (chain) =>
-      chain.insertContent({ type: "quiz", attrs: { source: writeQuiz(newQuiz()) } }),
-  },
-  {
-    id: "assignment",
-    title: "Assignment",
-    description: "Work that learners hand in",
-    keywords: ["homework", "submit", "task", "exercise", "tutorial"],
-    group: "Tutorial blocks",
-    glyph: ClipboardList,
-    opensField: true,
-    turnInto: false,
-    run: (chain) =>
-      chain.insertContent({
-        type: "assignment",
-        attrs: { source: writeAssignment(newAssignment()) },
-      }),
-  },
+    run: (chain) => chain.insertContent({ type: id, attrs: { source: newSource(id) } }),
+  })),
 ];
 
 /**
