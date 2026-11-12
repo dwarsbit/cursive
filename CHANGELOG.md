@@ -31,3 +31,6 @@
 - Give an assignment a rubric: criteria with points that add up to the assignment's points. Tick "Learners can add a file" to take a file next to the text.
 - Grade handed-in work from Publish → Learners: give points per criterion of the rubric, or one score, and write feedback. The learner sees the grade on the page. Save a file a learner handed in from the same place.
 - Cursive has its own icon, an asterisk on a page, and rust as its color in the app and on published sites with the Cursive theme.
+- Export a page, a presentation or the whole project as a PDF with the Export button or Cmd/Ctrl + P. Cursive opens the print window, where you choose “Save as PDF”.
+- A presentation becomes a PDF with one slide per page, or with speaker notes: the slides on paper with their notes under them. A whole project starts with a list of its pages, and each page starts on a new sheet.
+- Tutorial blocks are printed as a handout: questions without their answers, hints and explanations.

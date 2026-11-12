@@ -5,6 +5,8 @@ import { Editor, type EditorChange } from "@/components/Editor";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { PageProperties } from "@/components/PageProperties";
 import { Sidebar } from "@/components/Sidebar";
+import { HEADER_BUTTON } from "@/components/Dialog";
+import { ExportDialog } from "@/export/ExportDialog";
 import { cn } from "@/lib/cn";
 import { plainText, readPage, writePage, type Page } from "@/lib/page-file";
 import {
@@ -116,6 +118,7 @@ export default function App({
   const [deleting, setDeleting] = useState<TreeNode | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   // An open presentation lists its slides in the sidebar, until its pages are asked for.
   const [pagesShown, setPagesShown] = useState(false);
   const focusEditor = useRef<(() => void) | null>(null);
@@ -265,6 +268,17 @@ export default function App({
         event.preventDefault();
         event.stopPropagation();
         toggleMode.current();
+      }
+      // Cmd/Ctrl + P exports: printing the window itself shows the app, not the page.
+      if (
+        event.key.toLowerCase() === "p" &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        setExporting(true);
       }
     };
     window.addEventListener("keydown", onKeyDown, true);
@@ -448,6 +462,16 @@ export default function App({
               <span className="present-label">Present</span>
             </button>
           )}
+          {page && (
+            <button
+              type="button"
+              className={HEADER_BUTTON}
+              title="Export as PDF (Cmd/Ctrl + P)"
+              onClick={() => setExporting(true)}
+            >
+              Export
+            </button>
+          )}
           {actions}
         </header>
 
@@ -533,6 +557,14 @@ export default function App({
       </main>
 
       {deck?.presenting && <Presenter deck={deck} />}
+      {exporting && (
+        <ExportDialog
+          project={project}
+          active={active}
+          presentation={deck !== null}
+          onClose={() => setExporting(false)}
+        />
+      )}
       {deleting && (
         <ConfirmDialog
           title={`Delete “${deleting.label}”?`}

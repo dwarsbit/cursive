@@ -104,25 +104,29 @@ now you run it from the source, as described under [Develop](#develop).
 - **Themes**: give a site one of six themes: Cursive, Journal, Plum,
   Blueprint, Midnight or Poster. A theme sets the colors, typefaces and
   shapes of every page, slide and quiz.
+- **PDF**: the **Export** button, or Cmd/Ctrl + P, exports a page, a
+  presentation or the whole project. Cursive opens the print window, where
+  you choose “Save as PDF”. A presentation is one slide per page, or the
+  slides with their speaker notes under them.
 
 Sync carries the pages, the `.md` files. An empty folder stays on the
 computer it was made on.
 
 ## Compared with Polemic, Notion and Obsidian
 
-| | Cursive | Polemic | Notion | Obsidian |
-| --- | --- | --- | --- | --- |
-| Made for | Notes, presentations and tutorials | Papers in LaTeX | Team workspaces | Personal notes |
-| Runs on | Desktop and browser | Desktop | Browser, desktop and mobile | Desktop and mobile |
-| Files on your own machine | Yes, Markdown | Yes, LaTeX | No | Yes, Markdown |
-| Open source | Yes | Yes | No | No |
-| Block editor with a `/` menu | Yes | No | Yes | No |
-| Source of every page | Yes, Markdown | Yes, LaTeX | No | Yes, Markdown |
-| PDF as the result | No | Yes | No | No |
-| Publish as a site | Yes, with an account | No | Yes | Yes, as a paid add-on |
-| Slides | Yes | With LaTeX packages | No | Yes |
-| Quizzes and assignments | Yes | No | No | No |
-| Mobile app | No | No | Yes | Yes |
+|                              | Cursive                            | Polemic             | Notion                      | Obsidian              |
+| ---------------------------- | ---------------------------------- | ------------------- | --------------------------- | --------------------- |
+| Made for                     | Notes, presentations and tutorials | Papers in LaTeX     | Team workspaces             | Personal notes        |
+| Runs on                      | Desktop and browser                | Desktop             | Browser, desktop and mobile | Desktop and mobile    |
+| Files on your own machine    | Yes, Markdown                      | Yes, LaTeX          | No                          | Yes, Markdown         |
+| Open source                  | Yes                                | Yes                 | No                          | No                    |
+| Block editor with a `/` menu | Yes                                | No                  | Yes                         | No                    |
+| Source of every page         | Yes, Markdown                      | Yes, LaTeX          | No                          | Yes, Markdown         |
+| PDF as the result            | No                                 | Yes                 | No                          | No                    |
+| Publish as a site            | Yes, with an account               | No                  | Yes                         | Yes, as a paid add-on |
+| Slides                       | Yes                                | With LaTeX packages | No                          | Yes                   |
+| Quizzes and assignments      | Yes                                | No                  | No                          | No                    |
+| Mobile app                   | No                                 | No                  | Yes                         | Yes                   |
 
 - **Compared with Polemic**: Polemic is for the paper itself: LaTeX, a
   bibliography and a PDF that reviewers comment on. Cursive is for what
