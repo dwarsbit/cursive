@@ -2,6 +2,13 @@ mod account;
 mod link;
 mod project;
 
+/// Opens the system's print window for the app's window. An export
+/// puts its pages there, and the print window saves them as a PDF.
+#[tauri::command]
+fn print_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.print().map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -25,6 +32,7 @@ pub fn run() {
             link::link_load,
             link::link_save,
             link::link_remove,
+            print_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Cursive");
