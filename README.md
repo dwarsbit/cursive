@@ -62,7 +62,8 @@ now you run it from the source, as described under [Develop](#develop).
 ### Present
 
 - **Slides**: a presentation is a page that is a set of slides. The sidebar
-  lists them as small pictures, where you add, delete and drag them.
+  lists them under it, as it lists the pages in a folder, where you add,
+  delete and drag them.
 - **Layouts and speaker notes**: each slide is a 16:9 page of blocks with a
   layout: title, title and content, big number or quote. A slide that holds
   more than fits says so, and you split it in two or make its text smaller.
@@ -90,7 +91,8 @@ now you run it from the source, as described under [Develop](#develop).
 
 ### Publish
 
-- **Desktop app**: open a folder on your computer as a project. Each page
+- **Desktop app**: a project is a folder in the Cursive folder in your home
+  folder, or any other folder you open. Each page
   is a `.md` file in it, saved as you type, and a page or folder you delete
   moves to the trash.
 - **Sync** (Polemic account): sync the folder to your account. Changes

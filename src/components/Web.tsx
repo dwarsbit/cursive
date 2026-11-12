@@ -1,3 +1,4 @@
+import { Send } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import App, { type Status } from "@/App";
 import { BUTTON, HEADER_BUTTON, messageOf, PRIMARY_BUTTON } from "@/components/Dialog";
@@ -203,7 +204,11 @@ function OpenProject({ id }: { id: string }) {
       <App
         store={store}
         onSwitchProject={() => go(BASE)}
-        switchLabel="All projects"
+        onRenameProject={
+          info?.role === "owner"
+            ? async (name) => setInfo(await server.renameProject(id, name))
+            : undefined
+        }
         status={status}
         actions={
           info?.role === "owner" && (
@@ -212,6 +217,7 @@ function OpenProject({ id }: { id: string }) {
               className={HEADER_BUTTON}
               onClick={() => setPublishing(true)}
             >
+              <Send className="size-3.5" aria-hidden />
               Publish
             </button>
           )

@@ -1,6 +1,7 @@
 mod account;
 mod link;
 mod project;
+mod projects;
 
 /// Opens the system's print window for the app's window. An export
 /// puts its pages there, and the print window saves them as a PDF.
@@ -21,6 +22,11 @@ pub fn run() {
             project::project_create_folder,
             project::project_rename,
             project::project_remove,
+            projects::projects_list,
+            projects::projects_create,
+            projects::projects_opened,
+            projects::projects_rename,
+            projects::projects_trash,
             account::account_signed_in,
             account::account_server,
             account::account_sign_in,

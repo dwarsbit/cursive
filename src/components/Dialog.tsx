@@ -46,7 +46,7 @@ export const PRIMARY_BUTTON =
 export const QUIET_BUTTON =
   "h-8 rounded-md px-3 text-[13px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50";
 export const HEADER_BUTTON =
-  "h-6 flex-none rounded-[5px] border bg-background px-2.5 text-xs font-medium hover:bg-muted";
+  "inline-flex h-6 flex-none items-center gap-1.5 rounded-[5px] border bg-background px-2.5 text-xs font-medium hover:bg-muted";
 
 export const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
