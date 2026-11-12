@@ -4,7 +4,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Editor, type EditorChange } from "@/components/Editor";
 import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { PageProperties } from "@/components/PageProperties";
-import { Sidebar } from "@/components/Sidebar";
+import { clampWidth, Sidebar, type DropPlace } from "@/components/Sidebar";
 import { HEADER_BUTTON } from "@/components/Dialog";
 import { ExportDialog } from "@/export/ExportDialog";
 import { cn } from "@/lib/cn";
@@ -14,7 +14,9 @@ import {
   loadClosedFolders,
   loadMode,
   loadOpenPage,
+  loadSidebarWidth,
   saveClosedFolders,
+  saveSidebarWidth,
   saveMode,
   saveOpenPage,
   type Mode,
@@ -28,6 +30,7 @@ import {
   countPages,
   fileNameFor,
   freePath,
+  orderPages,
   parentOf,
   removeFrom,
   renameIn,
@@ -124,7 +127,11 @@ export default function App({
   const [exporting, setExporting] = useState(false);
   // The slide a presentation opens at: the one picked in the sidebar.
   const [startSlide, setStartSlide] = useState(0);
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    clampWidth(loadSidebarWidth()),
+  );
   const focusEditor = useRef<(() => void) | null>(null);
+  const focusEditorEnd = useRef<(() => void) | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
   // Changes from elsewhere that arrived before the project was loaded.
   const early = useRef<PageChange[]>([]);
@@ -212,11 +219,20 @@ export default function App({
     [page],
   );
 
-  const update = (next: Page) => {
-    if (!project || !active) return;
-    const file = writePage(next);
-    if (file === project.pages[active]) return;
-    commit({ ...project, pages: { ...project.pages, [active]: file } });
+  /**
+   * Changes the open page. A function gets the page as it is now, so a
+   * change that arrives while the project changes elsewhere (a page
+   * moved in the sidebar) builds on the latest file.
+   */
+  const update = (change: Page | ((current: Page) => Page)) => {
+    const latest = fresh.current;
+    const source = latest && active ? latest.pages[active] : undefined;
+    if (!latest || !active || source === undefined) return;
+    const file = writePage(
+      typeof change === "function" ? change(readPage(source)) : change,
+    );
+    if (file === source) return;
+    commit({ ...latest, pages: { ...latest.pages, [active]: file } });
     void persist(store.writePage(active, file));
   };
 
@@ -359,6 +375,47 @@ export default function App({
     }
   };
 
+  /**
+   * Moves a page before or after another page, or to the end of a
+   * folder. Its folder's pages get their places in their `order`
+   * properties; a page that changes folder moves its file.
+   */
+  const movePage = (path: string, target: string, place: DropPlace) => {
+    // The sidebar calls this when a drag ends, so it reads the latest project.
+    const project = fresh.current;
+    if (!project || !(path in project.pages) || path === target) return;
+    const folder = place === "into" ? target : parentOf(target);
+    const inFolder = (nodes: TreeNode[], dir: string): TreeNode[] => {
+      if (!dir) return nodes;
+      for (const node of nodes) {
+        if (node.kind !== "folder") continue;
+        if (node.path === dir) return node.children;
+        if (dir.startsWith(`${node.path}/`)) return inFolder(node.children, dir);
+      }
+      return [];
+    };
+    const siblings = inFolder(buildTree(project), folder)
+      .filter((node) => node.kind === "page" && node.path !== path)
+      .map((node) => node.path);
+    let next = project;
+    let moved = path;
+    if (parentOf(path) !== folder) {
+      moved = freePath(project, folder, baseName(path).replace(/\.md$/i, ""), ".md");
+      next = renameIn(project, path, moved);
+      void persist(store.rename(path, moved));
+      if (folder) setFolderOpen(folder, true);
+      if (active === path) {
+        setActive(moved);
+        saveOpenPage(moved);
+      }
+    }
+    const at = place === "into" ? siblings.length : siblings.indexOf(target);
+    siblings.splice(place === "after" ? at + 1 : at, 0, moved);
+    const writes = orderPages(next, siblings);
+    commit({ ...next, pages: { ...next.pages, ...Object.fromEntries(writes) } });
+    for (const [file, text] of writes) void persist(store.writePage(file, text));
+  };
+
   const renameProject =
     onRenameProject &&
     (async (name: string) => {
@@ -409,7 +466,10 @@ export default function App({
   }
 
   return (
-    <div className={cn("app", navOpen && "nav-open")}>
+    <div
+      className={cn("app", navOpen && "nav-open")}
+      style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
+    >
       <Sidebar
         projectName={project.name}
         onRenameProject={renameProject}
@@ -422,7 +482,13 @@ export default function App({
         onNewSlide={deck?.add}
         onDeleteSlide={deck?.remove}
         onMoveSlide={deck?.move}
-        onNewPresentation={() => newPage("", NEW_PRESENTATION)}
+        onNewPresentation={(folder) => newPage(folder, NEW_PRESENTATION)}
+        onMovePage={movePage}
+        width={sidebarWidth}
+        onResize={(width) => {
+          setSidebarWidth(width);
+          saveSidebarWidth(width);
+        }}
         tree={tree}
         active={active}
         closed={closed}
@@ -451,7 +517,7 @@ export default function App({
           <button
             type="button"
             className="menu-button"
-            aria-label="Show pages"
+            aria-label="Show the sidebar"
             onClick={() => setNavOpen(true)}
           >
             <PanelLeft className="size-4" aria-hidden />
@@ -519,19 +585,31 @@ export default function App({
           {actions}
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto" id="page-scroll">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          id="page-scroll"
+          // A click under the last block puts the caret on the last line.
+          onMouseDown={(event) => {
+            const target = event.target as HTMLElement;
+            if (event.button !== 0 || mode !== "visual" || deck) return;
+            if (target !== event.currentTarget && !target.classList.contains("page"))
+              return;
+            const doc = event.currentTarget.querySelector(".doc");
+            if (!doc || event.clientY < doc.getBoundingClientRect().bottom) return;
+            event.preventDefault();
+            focusEditorEnd.current?.();
+          }}
+        >
           {!page ? (
             <div className="grid h-full place-items-center">
               <div className="text-center">
-                <p className="text-sm text-muted-foreground">
-                  This project has no pages yet.
-                </p>
+                <p className="text-sm text-muted-foreground">This project is empty.</p>
                 <button
                   type="button"
                   onClick={() => newPage("")}
                   className="mt-3 h-8 rounded-md border border-primary-edge bg-primary-fill px-3 text-[13px] font-medium text-primary-foreground hover:bg-primary-fill/85"
                 >
-                  New page
+                  Add note
                 </button>
               </div>
             </div>
@@ -545,7 +623,10 @@ export default function App({
                 value={page.title}
                 placeholder="Untitled"
                 aria-label="Page title"
-                onChange={(event) => update({ ...page, title: event.target.value })}
+                onChange={(event) => {
+                  const title = event.target.value;
+                  update((current) => ({ ...current, title }));
+                }}
                 onBlur={() => void syncFileName()}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === "ArrowDown") {
@@ -556,14 +637,17 @@ export default function App({
               />
               <PageProperties
                 raw={page.properties}
-                onChange={(properties) => update({ ...page, properties })}
+                onChange={(properties) =>
+                  update((current) => ({ ...current, properties }))
+                }
               />
               <Editor
                 markdown={page.markdown}
                 onChange={(change: EditorChange) =>
-                  update({ ...page, markdown: change.markdown })
+                  update((current) => ({ ...current, markdown: change.markdown }))
                 }
                 focusRef={focusEditor}
+                focusEndRef={focusEditorEnd}
               />
             </article>
           ) : (

@@ -34,7 +34,7 @@ export interface Deck {
 export function useDeck(
   page: Page | null,
   key: string | null,
-  update: (page: Page) => void,
+  update: (change: (current: Page) => Page) => void,
   start = 0,
 ): Deck | null {
   const on = page !== null && isPresentation(page);
@@ -53,7 +53,8 @@ export function useDeck(
   if (!on) return null;
 
   const at = Math.min(index, slides.length - 1);
-  const write = (next: Slide[]) => update({ ...page, markdown: writeDeck(next) });
+  const write = (next: Slide[]) =>
+    update((current) => ({ ...current, markdown: writeDeck(next) }));
   const show = (next: number, focus = false) => {
     setIndex(next);
     setStamp(stamp + 1);

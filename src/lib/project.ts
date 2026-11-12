@@ -1,4 +1,5 @@
-import { readPage } from "./page-file";
+import { readPage, writePage } from "./page-file";
+import { formatProperties, parseProperties } from "./properties";
 import { mergeText, type PageChange } from "./project-doc";
 
 /**
@@ -39,6 +40,8 @@ export interface TreeNode {
   path: string;
   /** The page's title, or the folder's name. */
   label: string;
+  /** Where the page stands among its folder's pages, from its `order` property. */
+  order?: number;
   children: TreeNode[];
 }
 
@@ -55,7 +58,20 @@ export function pageLabel(path: string, source: string): string {
   );
 }
 
-/** The project as a tree: folders first, then pages, each by name. */
+/** The property that keeps a page's place in its folder. */
+export const ORDER_KEY = "order";
+const ORDER_LINE = /^order:[ \t]*(-?\d+(?:\.\d+)?)[ \t]*$/m;
+
+/** A page's place among its folder's pages, from its `order` property. */
+export function pageOrder(source: string): number | undefined {
+  const match = ORDER_LINE.exec(readPage(source).properties);
+  return match ? Number(match[1]) : undefined;
+}
+
+/**
+ * The project as a tree: folders first, by name, then pages. Pages
+ * with an `order` come first, in that order; the others follow by name.
+ */
 export function buildTree(project: Project): TreeNode[] {
   const root: TreeNode[] = [];
   const folders = new Map<string, TreeNode>();
@@ -79,13 +95,16 @@ export function buildTree(project: Project): TreeNode[] {
       kind: "page",
       path,
       label: pageLabel(path, source),
+      order: pageOrder(source),
       children: [],
     });
   }
+  const rank = (node: TreeNode) => node.order ?? Number.POSITIVE_INFINITY;
   const sort = (nodes: TreeNode[]) => {
     nodes.sort(
       (a, b) =>
         (a.kind === "folder" ? 0 : 1) - (b.kind === "folder" ? 0 : 1) ||
+        (a.kind === "page" && rank(a) !== rank(b) ? rank(a) - rank(b) : 0) ||
         a.label.localeCompare(b.label, undefined, {
           numeric: true,
           sensitivity: "base",
@@ -95,6 +114,36 @@ export function buildTree(project: Project): TreeNode[] {
   };
   sort(root);
   return root;
+}
+
+/**
+ * The files that give `paths`, the pages of one folder, their places
+ * in that order: `order: 1`, `order: 2` and on. Pages already in their
+ * place are left out.
+ */
+export function orderPages(
+  project: Project,
+  paths: string[],
+): Array<[path: string, source: string]> {
+  const writes: Array<[string, string]> = [];
+  paths.forEach((path, index) => {
+    const source = project.pages[path];
+    if (source === undefined || pageOrder(source) === index + 1) return;
+    const page = readPage(source);
+    const properties = parseProperties(page.properties);
+    const value = String(index + 1);
+    const at = properties.findIndex(
+      (property) => property.kind !== "raw" && property.key === ORDER_KEY,
+    );
+    const line = { kind: "number", key: ORDER_KEY, value } as const;
+    if (at === -1) properties.push(line);
+    else properties[at] = line;
+    writes.push([
+      path,
+      writePage({ ...page, properties: formatProperties(properties) }),
+    ]);
+  });
+  return writes;
 }
 
 /** How many pages a folder holds, at any depth. */

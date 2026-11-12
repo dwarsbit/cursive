@@ -5,11 +5,15 @@
 - Write a page in blocks: text, headings, to-do, bulleted and numbered lists, toggle, quote, callout, table, code with syntax colors, equation and divider.
 - Type `/` to pick a block from a menu, and type on to filter it.
 - Select text to make it bold, italic, underlined, struck through, inline code, highlighted or a link, or to turn its block into another one.
-- Hover a block to add a block under it or drag it to another place.
+- Hover a block to add a block under it or drag it to another place. Dragging works in the desktop app too.
 - Every block is read from and written to Markdown.
 - Switch between Visual and Markdown mode with the buttons in the header or Cmd/Ctrl + /. Markdown mode shows the page as its file, with the title in the front matter.
-- Keep a project as pages in folders: the sidebar lists them as a tree, where you add, open and delete pages and folders. A page's file is named after its title.
-- See and edit a page's properties under its title. They are the front matter of its file: text, or a list such as tags.
+- Keep a project as notes, presentations and folders: the sidebar lists them as a tree, where you add, open, rename and delete them. A note's file is named after its title.
+- Right-click the tree to add a note or presentation, or to rename or delete what you clicked.
+- Drag notes in the sidebar to put them in your own order, or onto a folder to move them there. The order is kept in each note's front matter.
+- Drag the sidebar's edge to make it wider or narrower.
+- Click under the last block of a note to write on its last line.
+- See and edit a page's properties under its title. They are the front matter of its file: text, a list such as tags, a date, a number, a checkbox or a link.
 - Keep your projects in the desktop app as folders in the Cursive folder in your home folder. The start screen makes a new project that starts with notes, a presentation or a tutorial, lists the projects you opened lately, and renames them or moves them to the trash.
 - Open any other folder on your computer as a project with Open folder. Each page is a Markdown file in it, saved as you type, and a page or folder you delete moves to the trash.
 - Rename a project by selecting its name at the top of the sidebar. In the desktop app its folder gets the same name.
@@ -19,7 +23,7 @@
 - Open a project from your account on another computer. It gets a folder in your Cursive folder.
 - Publish a project as a site with the Publish button: choose its address, publish again to bring it up to date, or unpublish it.
 - Open and edit your projects in a browser, at `/cursive` on the Polemic server. What you type is saved to your account as you type.
-- Make a presentation with the New presentation button in the sidebar. The sidebar lists its slides under it, as it lists the pages in a folder: select one to work on it, drag it to another place, or delete it. Close the presentation with its arrow to hide them.
+- Make a presentation with the Add presentation button in the sidebar. The sidebar lists its slides under it, as it lists the pages in a folder: select one to work on it, drag it to another place, or delete it. Close the presentation with its arrow to hide them.
 - Write each slide as a 16:9 page of blocks, with a layout (title, title and content, big number or quote) and speaker notes. Type a divider to start the next slide.
 - See when a slide holds more than fits, and split it into two slides or make its text smaller.
 - Present a presentation full screen with the Present button. The arrow keys and a click move between slides, and Esc ends it.

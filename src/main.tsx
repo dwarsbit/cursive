@@ -15,6 +15,18 @@ const applyTheme = () =>
 applyTheme();
 dark.addEventListener("change", applyTheme);
 
+// The desktop app has its own menus: the webview's (Reload, Inspect
+// Element) shows only in fields, for spelling and copy and paste, and
+// in development.
+if (isDesktop && import.meta.env.PROD) {
+  window.addEventListener("contextmenu", (event) => {
+    const target = event.target as Element | null;
+    if (!target?.closest?.("input, textarea, [contenteditable='true'], .cm-editor")) {
+      event.preventDefault();
+    }
+  });
+}
+
 // The desktop app keeps a project as a folder on disk. The web build
 // (`pnpm build:web`) runs on the Polemic server and keeps projects in
 // the account. Any other browser build is the demo, which keeps the

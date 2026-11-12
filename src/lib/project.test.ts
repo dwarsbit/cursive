@@ -5,6 +5,8 @@ import {
   countPages,
   fileNameFor,
   freePath,
+  orderPages,
+  pageOrder,
   removeFrom,
   renameIn,
   type Project,
@@ -51,6 +53,44 @@ describe("buildTree", () => {
   it("counts the pages in a folder at any depth", () => {
     const thesis = buildTree(project).find((node) => node.label === "Thesis")!;
     expect(countPages(thesis)).toBe(3);
+  });
+});
+
+describe("page order", () => {
+  const project: Project = {
+    name: "P",
+    folders: ["A"],
+    pages: {
+      "Beta.md": "---\ntitle: Beta\n---\n",
+      "Alpha.md": "---\ntitle: Alpha\n---\n",
+      "Gamma.md": "---\ntitle: Gamma\norder: 1\n---\n",
+    },
+  };
+
+  it("puts ordered pages first, in order, then the rest by name", () => {
+    expect(buildTree(project).map((node) => node.label)).toEqual([
+      "A",
+      "Gamma",
+      "Alpha",
+      "Beta",
+    ]);
+  });
+
+  it("numbers a folder's pages in the order given and skips the ones in place", () => {
+    const writes = orderPages(project, ["Gamma.md", "Beta.md", "Alpha.md"]);
+    expect(writes.map(([path]) => path)).toEqual(["Beta.md", "Alpha.md"]);
+    expect(writes[0][1]).toMatch(/^---\ntitle: Beta\norder: 2\n---\n/);
+    const next = {
+      ...project,
+      pages: { ...project.pages, ...Object.fromEntries(writes) },
+    };
+    expect(pageOrder(next.pages["Alpha.md"])).toBe(3);
+    expect(buildTree(next).map((node) => node.label)).toEqual([
+      "A",
+      "Gamma",
+      "Beta",
+      "Alpha",
+    ]);
   });
 });
 
