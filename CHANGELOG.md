@@ -30,3 +30,4 @@
 - Add more tutorial blocks from the `/` menu: learning goals, key terms, a video, before and after, fill in the blanks, put in order, an exercise with a hint and a model answer, and flashcards. In Markdown each is a block named after it (`goals`, `terms`, `video`, `compare`, `blanks`, `order`, `exercise`, `flashcards`) with YAML inside.
 - Give an assignment a rubric: criteria with points that add up to the assignment's points. Tick "Learners can add a file" to take a file next to the text.
 - Grade handed-in work from Publish → Learners: give points per criterion of the rubric, or one score, and write feedback. The learner sees the grade on the page. Save a file a learner handed in from the same place.
+- Cursive has its own icon, an asterisk on a page, and rust as its color in the app and on published sites with the Cursive theme.

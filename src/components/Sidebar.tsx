@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { countPages, type TreeNode } from "@/lib/project";
+import { Mark } from "./Mark";
 
 export interface SidebarProps {
   projectName: string;
@@ -204,12 +205,7 @@ export function Sidebar(props: SidebarProps) {
   return (
     <aside className="sidebar" aria-label="Project">
       <div className="flex h-9 items-center gap-2 px-2 text-sm font-semibold">
-        <span
-          aria-hidden
-          className="grid size-[22px] flex-none place-items-center rounded-md bg-primary-fill font-serif text-sm font-semibold text-primary-foreground italic shadow-[inset_0_0_0_1px_var(--primary-edge)]"
-        >
-          C
-        </span>
+        <Mark className="size-[22px] flex-none" />
         <span className="min-w-0 flex-1 truncate">{props.projectName}</span>
         {props.onSwitchProject && (
           <button

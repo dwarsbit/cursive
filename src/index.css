@@ -58,8 +58,8 @@
 }
 
 /* Design tokens: the Polemic UI kit (shadcn semantic tokens on
-   Tailwind's mauve gray scale) with Cursive's own primary, indigo
-   #372AAC (oklch 39.8% 0.195 277), as the one tint. */
+   Tailwind's mauve gray scale) with Cursive's own primary, rust
+   #9A4A1C (oklch 50.3% 0.121 47), as the one tint. */
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(14.5% 0.008 326); /* mauve-950 */
@@ -67,10 +67,10 @@
   --card-foreground: oklch(14.5% 0.008 326);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(14.5% 0.008 326);
-  --primary: oklch(39.8% 0.195 277.366);
+  --primary: oklch(50.3% 0.121 47);
   --primary-foreground: oklch(98.5% 0 0); /* mauve-50 */
-  --primary-fill: oklch(39.8% 0.195 277.366);
-  --primary-edge: oklch(32% 0.17 277.366);
+  --primary-fill: oklch(50.3% 0.121 47);
+  --primary-edge: oklch(42% 0.105 47);
   --secondary: oklch(96% 0.003 325.6); /* mauve-100 */
   --secondary-foreground: oklch(21.2% 0.019 322.12);
   --muted: oklch(96% 0.003 325.6);
@@ -80,12 +80,12 @@
   --destructive: oklch(57.7% 0.245 27.325); /* red-600 */
   --border: oklch(92.2% 0.005 325.62); /* mauve-200 */
   --input: oklch(92.2% 0.005 325.62);
-  --ring: oklch(39.8% 0.195 277.366);
-  --selection: oklch(93% 0.035 277.366);
-  --tint: oklch(39.8% 0.195 277.366);
-  --tint-foreground: oklch(32% 0.17 277.366);
-  --tint-soft: oklch(39.8% 0.195 277.366 / 8%);
-  --tint-edge: oklch(39.8% 0.195 277.366 / 25%);
+  --ring: oklch(50.3% 0.121 47);
+  --selection: oklch(93% 0.035 47);
+  --tint: oklch(50.3% 0.121 47);
+  --tint-foreground: oklch(42% 0.105 47);
+  --tint-soft: oklch(50.3% 0.121 47 / 8%);
+  --tint-edge: oklch(50.3% 0.121 47 / 25%);
   --success: oklch(59.6% 0.145 163.225); /* emerald-600 */
   --warning: oklch(66.6% 0.179 58.318); /* amber-600 */
   --info: oklch(58.8% 0.158 241.966); /* sky-600 */
@@ -93,9 +93,9 @@
   /* The window backdrop behind the page card. */
   --sidebar: oklch(98.5% 0 0); /* mauve-50 */
   --code-bg: oklch(98.5% 0.002 325.6);
-  --syn-kw: oklch(39.8% 0.195 277.366);
+  --syn-kw: oklch(50.3% 0.121 47);
   --syn-str: oklch(52% 0.13 163);
-  --syn-num: oklch(55% 0.16 40);
+  --syn-num: oklch(48% 0.16 277);
   --syn-fn: oklch(45% 0.12 241);
   --pop-shadow: 0 8px 24px oklch(14.5% 0.008 326 / 12%), 0 0 0 1px var(--border);
 }
@@ -108,10 +108,10 @@
   --card-foreground: oklch(98.5% 0 0);
   --popover: oklch(21.2% 0.019 322.12);
   --popover-foreground: oklch(98.5% 0 0);
-  --primary: oklch(60% 0.17 277.366);
+  --primary: oklch(76% 0.1 52);
   --primary-foreground: oklch(14.5% 0.008 326);
-  --primary-fill: oklch(60% 0.17 277.366);
-  --primary-edge: oklch(60% 0.17 277.366);
+  --primary-fill: oklch(76% 0.1 52);
+  --primary-edge: oklch(76% 0.1 52);
   --secondary: oklch(26.3% 0.024 320.12); /* mauve-800 */
   --secondary-foreground: oklch(98.5% 0 0);
   --muted: oklch(26.3% 0.024 320.12);
@@ -121,20 +121,20 @@
   --destructive: oklch(70.4% 0.191 22.216); /* red-400 */
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(60% 0.17 277.366);
-  --selection: oklch(60% 0.17 277.366 / 35%);
-  --tint: oklch(60% 0.17 277.366);
-  --tint-foreground: oklch(75% 0.12 277.366);
-  --tint-soft: oklch(60% 0.17 277.366 / 15%);
-  --tint-edge: oklch(60% 0.17 277.366 / 35%);
+  --ring: oklch(76% 0.1 52);
+  --selection: oklch(76% 0.1 52 / 35%);
+  --tint: oklch(76% 0.1 52);
+  --tint-foreground: oklch(84% 0.075 52);
+  --tint-soft: oklch(76% 0.1 52 / 15%);
+  --tint-edge: oklch(76% 0.1 52 / 35%);
   --success: oklch(76.5% 0.177 163.223); /* emerald-400 */
   --warning: oklch(82.8% 0.189 84.429); /* amber-400 */
   --info: oklch(74.6% 0.16 232.661); /* sky-400 */
   --sidebar: oklch(14.5% 0.008 326);
   --code-bg: oklch(18% 0.014 322);
-  --syn-kw: oklch(75% 0.12 277.366);
+  --syn-kw: oklch(84% 0.075 52);
   --syn-str: oklch(76.5% 0.14 163);
-  --syn-num: oklch(78% 0.13 55);
+  --syn-num: oklch(76% 0.12 277);
   --syn-fn: oklch(76% 0.12 232);
   --pop-shadow: 0 8px 24px oklch(0 0 0 / 40%), 0 0 0 1px var(--border);
 }

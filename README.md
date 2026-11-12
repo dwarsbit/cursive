@@ -110,7 +110,7 @@ The desktop app signs in to `https://app.polemicapp.com`; start it with
 - `docker/web`: the image of the browser build, which the **Web image**
   workflow pushes to `ghcr.io/dwarsbit/cursive-web`.
 - [docs/releasing.md](docs/releasing.md): how a release is made.
-- `src/index.css`: the Polemic design tokens with Cursive's indigo as the one
+- `src/index.css`: the Polemic design tokens with Cursive's rust as the one
   tint, and the styles of the blocks.
 
 ## License
