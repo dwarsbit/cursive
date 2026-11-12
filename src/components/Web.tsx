@@ -10,6 +10,7 @@ import {
   type ServerProject,
 } from "@/lib/server";
 import { serverStore } from "@/lib/server-store";
+import { Mark } from "./Mark";
 
 const server = new Server(browserTransport);
 
@@ -71,12 +72,7 @@ function Projects({ account }: { account: Account }) {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-xl px-4 py-10">
         <header className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="grid size-[22px] flex-none place-items-center rounded-md bg-primary-fill font-serif text-sm font-semibold text-primary-foreground italic shadow-[inset_0_0_0_1px_var(--primary-edge)]"
-          >
-            C
-          </span>
+          <Mark className="size-[22px] flex-none" />
           <h1 className="flex-1 text-sm font-semibold">Cursive</h1>
           <a
             href="/account"

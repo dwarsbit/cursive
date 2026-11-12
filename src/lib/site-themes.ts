@@ -26,10 +26,10 @@ export const SITE_THEMES: SiteThemeInfo[] = [
   {
     id: "default",
     name: "Cursive",
-    hint: "Indigo on white",
+    hint: "Rust on white",
     ground: "#ffffff",
     ink: "#1c1a1d",
-    accent: "#372aac",
+    accent: "#9a4a1c",
     font: "inherit",
     weight: 700,
     radius: 4,

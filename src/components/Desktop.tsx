@@ -22,6 +22,7 @@ import {
   type Account,
   type ServerProject,
 } from "@/lib/server";
+import { Mark } from "./Mark";
 
 const server = new Server(desktopTransport);
 
@@ -291,12 +292,7 @@ export function Desktop() {
     return (
       <div className="grid h-full place-items-center p-6">
         <div className="max-w-sm text-center">
-          <span
-            aria-hidden
-            className="mx-auto grid size-12 place-items-center rounded-xl bg-primary-fill font-serif text-3xl font-semibold text-primary-foreground italic shadow-[inset_0_0_0_1px_var(--primary-edge)]"
-          >
-            C
-          </span>
+          <Mark className="mx-auto size-12" />
           <h1 className="mt-4 text-lg font-semibold">Open a folder to start</h1>
           <p className="mt-1.5 text-[13px] text-muted-foreground">
             A project is a folder of Markdown files. Choose one you already have, or an
