@@ -26,3 +26,4 @@
 - Publish pages with quizzes or assignments as a tutorial: readers check their answers, see their points and mark pages as complete. Their progress is kept in their browser, and the correct answers stay on the server until a quiz is answered.
 - Let readers of a tutorial sign in with a Polemic account to keep their progress in their account and hand in assignments as text. This needs a paid plan on the author's side.
 - See who signed in to your tutorial from Publish → Learners: their completed pages, quiz points and handed-in work.
+- Give a published site a theme in the Publish dialog: Cursive, Journal, Plum, Blueprint, Midnight or Poster. A theme sets the colors, typefaces and shapes of every page, slide and quiz.
