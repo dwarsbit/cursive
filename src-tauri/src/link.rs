@@ -22,7 +22,7 @@ pub struct Link {
 
 /// The link's file for a project folder: named after the folder's real
 /// path, so the same folder always finds its link.
-fn link_file(links_dir: &Path, project_dir: &str) -> Result<PathBuf, String> {
+pub(crate) fn link_file(links_dir: &Path, project_dir: &str) -> Result<PathBuf, String> {
     let real = fs::canonicalize(project_dir)
         .map_err(|e| format!("the project folder can't be opened: {e}"))?;
     let digest = Sha256::digest(real.to_string_lossy().as_bytes());
@@ -61,7 +61,7 @@ pub fn remove(links_dir: &Path, project_dir: &str) -> Result<(), String> {
     }
 }
 
-fn links_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn links_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(app
         .path()
         .app_data_dir()

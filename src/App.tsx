@@ -35,9 +35,9 @@ import {
   type ProjectStore,
   type TreeNode,
 } from "@/lib/project";
-import { isPresentation, NEW_PRESENTATION } from "@/slides/deck";
+import { dragWindow } from "@/lib/platform";
+import { isPresentation, NEW_PRESENTATION, readDeck, slideTitle } from "@/slides/deck";
 import { Presenter } from "@/slides/Presenter";
-import { SlideSidebar } from "@/slides/SlideSidebar";
 import { SlideStage } from "@/slides/SlideStage";
 import { useDeck } from "@/slides/use-deck";
 
@@ -87,7 +87,8 @@ export default function App({
   store,
   firstOpen,
   onSwitchProject,
-  switchLabel = "Open another folder…",
+  switchLabel = "All projects",
+  onRenameProject,
   actions,
   status,
 }: {
@@ -97,6 +98,8 @@ export default function App({
   /** Opens another project, where the app can. */
   onSwitchProject?: () => void;
   switchLabel?: string;
+  /** Gives the project another name, where the app can. Rejects with why not. */
+  onRenameProject?: (name: string) => Promise<void>;
   /** Buttons at the end of the header: the account, publishing. */
   actions?: React.ReactNode;
   status?: Status;
@@ -119,8 +122,8 @@ export default function App({
   const [problem, setProblem] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  // An open presentation lists its slides in the sidebar, until its pages are asked for.
-  const [pagesShown, setPagesShown] = useState(false);
+  // The slide a presentation opens at: the one picked in the sidebar.
+  const [startSlide, setStartSlide] = useState(0);
   const focusEditor = useRef<(() => void) | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
   // Changes from elsewhere that arrived before the project was loaded.
@@ -191,15 +194,17 @@ export default function App({
   );
 
   const tree = useMemo(() => (project ? buildTree(project) : []), [project]);
-  const presentations = useMemo(
-    () =>
-      new Set(
-        Object.entries(project?.pages ?? {})
-          .filter(([, file]) => isPresentation(readPage(file)))
-          .map(([path]) => path),
-      ),
-    [project],
-  );
+  // The presentations, each with what its slides are called.
+  const decks = useMemo(() => {
+    const found = new Map<string, string[]>();
+    for (const [path, file] of Object.entries(project?.pages ?? {})) {
+      const page = readPage(file);
+      if (isPresentation(page)) {
+        found.set(path, readDeck(page.markdown).map(slideTitle));
+      }
+    }
+    return found;
+  }, [project]);
   const source = project && active ? (project.pages[active] ?? null) : null;
   const page = useMemo(() => (source === null ? null : readPage(source)), [source]);
   const words = useMemo(
@@ -237,15 +242,15 @@ export default function App({
     return renamed;
   };
 
-  const open = (path: string) => {
+  const open = (path: string, slide = 0) => {
     if (path !== active) {
       syncFileName();
+      setStartSlide(slide);
       setActive(path);
       setOpened((n) => n + 1);
       saveOpenPage(path);
     }
     setNavOpen(false);
-    setPagesShown(false);
   };
 
   const switchMode = (next: Mode) => {
@@ -304,9 +309,11 @@ export default function App({
     saveOpenPage(path);
     if (folder) setFolderOpen(folder, true);
     setNavOpen(false);
-    setPagesShown(false);
+    setStartSlide(0);
     void persist(store.writePage(path, file));
-    requestAnimationFrame(() => titleInput.current?.focus());
+    // A page's title is typed on the page, a presentation's in the sidebar.
+    if (file === NEW_PRESENTATION) setRenaming(path);
+    else requestAnimationFrame(() => titleInput.current?.focus());
   };
 
   const newFolder = () => {
@@ -330,18 +337,49 @@ export default function App({
     void persist(store.rename(path, wanted));
   };
 
+  /** Gives a page the title typed in the sidebar, and its file the name that goes with it. */
+  const renamePage = (path: string, title: string) => {
+    const file = project?.pages[path];
+    if (!project || file === undefined) return;
+    const page = readPage(file);
+    if (title.trim() === page.title.trim()) return;
+    const next = writePage({ ...page, title: title.trim() });
+    const titled = { ...project, pages: { ...project.pages, [path]: next } };
+    void persist(store.writePage(path, next));
+    const wanted = title.trim()
+      ? freePath(titled, parentOf(path), fileNameFor(title), ".md", path)
+      : path;
+    commit(wanted === path ? titled : renameIn(titled, path, wanted));
+    if (wanted !== path) void persist(store.rename(path, wanted));
+    if (path !== active) return;
+    setOpened((n) => n + 1);
+    if (wanted !== path) {
+      setActive(wanted);
+      saveOpenPage(wanted);
+    }
+  };
+
+  const renameProject =
+    onRenameProject &&
+    (async (name: string) => {
+      syncFileName();
+      await onRenameProject(name);
+      if (fresh.current) commit({ ...fresh.current, name });
+    });
+
   const remove = (node: TreeNode) => {
     if (!project) return;
     const next = removeFrom(project, node.path);
     commit(next);
     if (active && !(active in next.pages)) {
+      setStartSlide(0);
       setActive(firstPage(buildTree(next)));
       setOpened((n) => n + 1);
     }
     void persist(store.remove(node.path));
   };
 
-  const deck = useDeck(page, active, update);
+  const deck = useDeck(page, active, update, startSlide);
   const title = page?.title.trim() ?? "";
   useEffect(() => {
     document.title = title ? `${title} · Cursive` : "Cursive";
@@ -372,42 +410,48 @@ export default function App({
 
   return (
     <div className={cn("app", navOpen && "nav-open")}>
-      {deck && page && !pagesShown ? (
-        <SlideSidebar
-          deck={deck}
-          title={page.title}
-          onTitle={(next) => update({ ...page, title: next })}
-          onTitleDone={() => void syncFileName()}
-          onBack={() => setPagesShown(true)}
-        />
-      ) : (
-        <Sidebar
-          projectName={project.name}
-          presentations={presentations}
-          onNewPresentation={() => newPage("", NEW_PRESENTATION)}
-          tree={tree}
-          active={active}
-          closed={closed}
-          renaming={renaming}
-          onOpen={open}
-          onToggle={(path) => setFolderOpen(path, closed.has(path))}
-          onNewPage={newPage}
-          onNewFolder={newFolder}
-          onRename={setRenaming}
-          onRenameFolder={renameFolder}
-          onDelete={setDeleting}
-          onSwitchProject={onSwitchProject}
-          switchLabel={switchLabel}
-        />
-      )}
+      <Sidebar
+        projectName={project.name}
+        onRenameProject={renameProject}
+        decks={decks}
+        slide={deck?.index}
+        onOpenSlide={(path, index) => {
+          if (path === active) deck?.select(index);
+          open(path, index);
+        }}
+        onNewSlide={deck?.add}
+        onDeleteSlide={deck?.remove}
+        onMoveSlide={deck?.move}
+        onNewPresentation={() => newPage("", NEW_PRESENTATION)}
+        tree={tree}
+        active={active}
+        closed={closed}
+        renaming={renaming}
+        onOpen={open}
+        onToggle={(path) => setFolderOpen(path, closed.has(path))}
+        onNewPage={newPage}
+        onNewFolder={newFolder}
+        onRename={setRenaming}
+        onRenamed={(node, name) =>
+          node.kind === "folder"
+            ? renameFolder(node.path, name)
+            : renamePage(node.path, name)
+        }
+        onDelete={setDeleting}
+        onSwitchProject={onSwitchProject}
+        switchLabel={switchLabel}
+      />
       <div className="scrim" onClick={() => setNavOpen(false)} />
 
       <main className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] bg-card shadow-[0_1px_2px_oklch(14.5%_0.008_326/5%),0_0_0_1px_var(--border)]">
-        <header className="flex h-11 flex-none items-center gap-2 px-3 text-xs">
+        <header
+          className="flex h-11 flex-none items-center gap-2 px-3 text-xs"
+          onPointerDown={dragWindow}
+        >
           <button
             type="button"
             className="menu-button"
-            aria-label={deck ? "Show slides" : "Show pages"}
+            aria-label="Show pages"
             onClick={() => setNavOpen(true)}
           >
             <PanelLeft className="size-4" aria-hidden />

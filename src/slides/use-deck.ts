@@ -28,12 +28,14 @@ export interface Deck {
 
 /**
  * The open page as a presentation, or null when it is a page of notes.
- * `key` names the open page: another page starts at its first slide.
+ * `key` names the open page: another page starts at slide `start`,
+ * its first unless one was asked for.
  */
 export function useDeck(
   page: Page | null,
   key: string | null,
   update: (page: Page) => void,
+  start = 0,
 ): Deck | null {
   const on = page !== null && isPresentation(page);
   const markdown = on ? page.markdown : "";
@@ -45,7 +47,7 @@ export function useDeck(
   const [lastKey, setLastKey] = useState(key);
   if (key !== lastKey) {
     setLastKey(key);
-    setIndex(0);
+    setIndex(start);
     setPresenting(false);
   }
   if (!on) return null;

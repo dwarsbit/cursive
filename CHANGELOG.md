@@ -10,13 +10,16 @@
 - Switch between Visual and Markdown mode with the buttons in the header or Cmd/Ctrl + /. Markdown mode shows the page as its file, with the title in the front matter.
 - Keep a project as pages in folders: the sidebar lists them as a tree, where you add, open and delete pages and folders. A page's file is named after its title.
 - See and edit a page's properties under its title. They are the front matter of its file: text, or a list such as tags.
-- Open a folder on your computer as a project in the desktop app. Each page is a Markdown file in it, saved as you type, and a page or folder you delete moves to the trash.
-- Sign in to your Polemic account in the desktop app, from the Account button. The sign-in happens in your browser, and Cursive keeps it in your system's credential store.
+- Keep your projects in the desktop app as folders in the Cursive folder in your home folder. The start screen makes a new project that starts with notes, a presentation or a tutorial, lists the projects you opened lately, and renames them or moves them to the trash.
+- Open any other folder on your computer as a project with Open folder. Each page is a Markdown file in it, saved as you type, and a page or folder you delete moves to the trash.
+- Rename a project by selecting its name at the top of the sidebar. In the desktop app its folder gets the same name.
+- Sign in to your Polemic account in the desktop app, with the Sign in button. The sign-in happens in your browser, and Cursive keeps it in your system's credential store.
 - Sync a project folder to your account. Changes travel both ways, also the ones you made offline, and two changes to the same page are both kept.
-- Open a project from your account in an empty folder on another computer.
+- Select your avatar in the desktop app to see who is signed in, sync the open project or stop syncing it, open your account page, or sign out.
+- Open a project from your account on another computer. It gets a folder in your Cursive folder.
 - Publish a project as a site with the Publish button: choose its address, publish again to bring it up to date, or unpublish it.
 - Open and edit your projects in a browser, at `/cursive` on the Polemic server. What you type is saved to your account as you type.
-- Make a presentation with the New presentation button in the sidebar. The sidebar lists its slides as small pictures: click one to work on it, drag it to another place, or delete it.
+- Make a presentation with the New presentation button in the sidebar. The sidebar lists its slides under it, as it lists the pages in a folder: select one to work on it, drag it to another place, or delete it. Close the presentation with its arrow to hide them.
 - Write each slide as a 16:9 page of blocks, with a layout (title, title and content, big number or quote) and speaker notes. Type a divider to start the next slide.
 - See when a slide holds more than fits, and split it into two slides or make its text smaller.
 - Present a presentation full screen with the Present button. The arrow keys and a click move between slides, and Esc ends it.
@@ -34,3 +37,5 @@
 - Export a page, a presentation or the whole project as a PDF with the Export button or Cmd/Ctrl + P. Cursive opens the print window, where you choose “Save as PDF”.
 - A presentation becomes a PDF with one slide per page, or with speaker notes: the slides on paper with their notes under them. A whole project starts with a list of its pages, and each page starts on a new sheet.
 - Tutorial blocks are printed as a handout: questions without their answers, hints and explanations.
+- Rename a page or a presentation by double-clicking it in the sidebar.
+- The desktop app on macOS has no title bar: the sidebar and the page use that space, and you drag the window by the top of either.

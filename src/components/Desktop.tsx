@@ -1,9 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open } from "@tauri-apps/plugin-dialog";
+import { Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import App, { type Status } from "@/App";
-import { AccountDialog } from "@/components/AccountDialog";
-import { HEADER_BUTTON, PRIMARY_BUTTON } from "@/components/Dialog";
+import { AccountDialog, type AccountAsk } from "@/components/AccountDialog";
+import { AccountMenu } from "@/components/AccountMenu";
+import { HEADER_BUTTON } from "@/components/Dialog";
+import { ProjectPicker } from "@/components/ProjectPicker";
 import { PublishDialog } from "@/components/PublishDialog";
 import { desktopStore } from "@/lib/desktop-store";
 import {
@@ -12,8 +14,9 @@ import {
   type Link,
   type SyncState,
 } from "@/lib/link-sync";
-import { loadFolder, saveFolder } from "@/lib/prefs";
-import type { Project, ProjectStore } from "@/lib/project";
+import { hasWindowButtons } from "@/lib/platform";
+import { forgetFolder, loadFolder, saveFolder } from "@/lib/prefs";
+import type { ProjectStore } from "@/lib/project";
 import {
   desktopSaveFile,
   desktopTransport,
@@ -22,7 +25,6 @@ import {
   type Account,
   type ServerProject,
 } from "@/lib/server";
-import { Mark } from "./Mark";
 
 const server = new Server(desktopTransport);
 
@@ -36,6 +38,13 @@ const folderName = (dir: string) =>
     .replace(/[\\/]+$/, "")
     .split(/[\\/]/)
     .pop() || "Notes";
+
+/** A name a folder can have: a project's name without the marks a file system refuses. */
+const asFolderName = (name: string) =>
+  name
+    .replace(/[\\/:*?"<>|\p{Cc}]/gu, " ")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s.]+|[\s.]+$/g, "") || "Notes";
 
 const STATUS: Record<Exclude<SyncState["kind"], "error">, Status> = {
   syncing: { text: "Saved. Syncing…" },
@@ -110,9 +119,10 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
 }
 
 /**
- * The desktop app: a project is a folder on disk. Shows the folder
- * that was open last, or asks for one. Signed in to a Polemic account,
- * a folder can sync with the account and be published.
+ * The desktop app: a project is a folder on disk, by default one in
+ * the Cursive folder in your home folder. Shows the project that was
+ * open last, or the projects to pick from. Signed in to a Polemic
+ * account, a project can sync with the account and be published.
  */
 export function Desktop() {
   const [folder, setFolder] = useState(loadFolder);
@@ -123,8 +133,36 @@ export function Desktop() {
   const [linked, setLinked] = useState(0);
   const [syncState, setSyncState] = useState<SyncState | null>(null);
   const [dialog, setDialog] = useState<
-    { kind: "account"; note?: string } | "publish" | null
+    { ask: AccountAsk; note?: string } | "publish" | null
   >(null);
+
+  // The macOS window buttons sit over the app's top left corner, which
+  // makes room for them. A full-screen window has none.
+  useEffect(() => {
+    if (!hasWindowButtons) return;
+    const root = document.documentElement;
+    root.classList.add("window-buttons");
+    let live = true;
+    let stop: (() => void) | undefined;
+    void import("@tauri-apps/api/window")
+      .then(async ({ getCurrentWindow }) => {
+        const appWindow = getCurrentWindow();
+        const sync = () =>
+          void appWindow.isFullscreen().then(
+            (full) => live && root.classList.toggle("window-buttons", !full),
+            () => {},
+          );
+        sync();
+        const unlisten = await appWindow.onResized(sync);
+        if (live) stop = unlisten;
+        else unlisten();
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+      stop?.();
+    };
+  }, []);
 
   useEffect(() => {
     invoke<boolean>("account_signed_in").then(setSignedIn, () => setSignedIn(false));
@@ -187,11 +225,49 @@ export function Desktop() {
     };
   }, [session]);
 
-  const choose = async () => {
-    const picked = await open({ directory: true, title: "Open a folder as a project" });
-    if (typeof picked !== "string") return;
-    saveFolder(picked);
-    setFolder(picked);
+  /** Opens a folder as the project, and puts it at the top of the recent ones. */
+  const openProject = useCallback(async (dir: string) => {
+    const opened = await invoke<{ path: string }>("projects_opened", { dir }).catch(
+      fail,
+    );
+    saveFolder(opened.path);
+    setFolder(opened.path);
+  }, []);
+
+  // The project that was open last comes back, unless its folder is gone.
+  useEffect(() => {
+    const last = loadFolder();
+    if (!last) return;
+    invoke<{ path: string }>("projects_opened", { dir: last }).then(
+      (opened) => {
+        saveFolder(opened.path);
+        setFolder(opened.path);
+      },
+      () => {
+        forgetFolder();
+        setFolder(null);
+      },
+    );
+  }, []);
+
+  const closeProject = () => {
+    void session?.store.flush().catch(() => {});
+    forgetFolder();
+    setFolder(null);
+  };
+
+  const renameProject = async (name: string) => {
+    if (!folder || !session) return;
+    await session.store.flush();
+    const moved = await invoke<string>("projects_rename", { dir: folder, name }).catch(
+      fail,
+    );
+    // The project in the account gets the name too, when it is yours to rename.
+    if (session.projectId && signedIn) {
+      await server.renameProject(session.projectId, name).catch(() => {});
+    }
+    saveFolder(moved);
+    setFolder(moved);
   };
 
   const openUrl = useCallback(
@@ -227,20 +303,12 @@ export function Desktop() {
   };
 
   const openFromAccount = async (project: ServerProject) => {
-    const picked = await open({
-      directory: true,
-      title: `Choose an empty folder for “${project.name}”`,
-    });
-    if (typeof picked !== "string") return;
-    const there = await invoke<Project>("project_load", { dir: picked }).catch(fail);
-    if (Object.keys(there.pages).length > 0) {
-      throw new Error("That folder already has pages. Choose an empty folder.");
-    }
-    await invoke("link_save", { dir: picked, projectId: project.id, state: "" }).catch(
-      fail,
-    );
-    saveFolder(picked);
-    setFolder(picked);
+    const dir = await invoke<string>("projects_create", {
+      name: asFolderName(project.name),
+      unique: true,
+    }).catch(fail);
+    await invoke("link_save", { dir, projectId: project.id, state: "" }).catch(fail);
+    await openProject(dir);
     setLinked((n) => n + 1);
     setDialog(null);
   };
@@ -248,13 +316,13 @@ export function Desktop() {
   const publish = () => {
     if (!signedIn) {
       setDialog({
-        kind: "account",
+        ask: "sync",
         note: "Sign in to publish this project as a site.",
       });
     } else if (!session?.sync || !session.projectId) {
       setDialog({
-        kind: "account",
-        note: "To publish this project, sync its folder to your account first.",
+        ask: "sync",
+        note: "To publish this project, sync it to your account first.",
       });
     } else setDialog("publish");
   };
@@ -270,53 +338,36 @@ export function Desktop() {
 
   const accountDialog = dialog && dialog !== "publish" && (
     <AccountDialog
-      account={account}
+      ask={dialog.ask}
       signedIn={signedIn === true}
-      linked={Boolean(session?.projectId)}
       note={dialog.note}
-      onSignIn={signIn}
+      onSignIn={async (create) => {
+        await signIn(create);
+        // Signed in, and nothing left to ask: the project syncs already.
+        if (dialog.ask === "sign-in" || (dialog.ask === "sync" && session?.projectId)) {
+          setDialog(null);
+        }
+      }}
       onCancelSignIn={() => void invoke("account_cancel_sign_in")}
-      onSignOut={signOut}
-      onLink={link}
-      onUnlink={unlink}
+      onLink={async () => {
+        await link();
+        setDialog(null);
+      }}
       listProjects={() => server.projects()}
       onOpenProject={openFromAccount}
-      onManage={() =>
-        void invoke<string>("account_server").then((url) => openUrl(`${url}/account`))
-      }
       onClose={() => setDialog(null)}
     />
   );
 
   if (!folder) {
     return (
-      <div className="grid h-full place-items-center p-6">
-        <div className="max-w-sm text-center">
-          <Mark className="mx-auto size-12" />
-          <h1 className="mt-4 text-lg font-semibold">Open a folder to start</h1>
-          <p className="mt-1.5 text-[13px] text-muted-foreground">
-            A project is a folder of Markdown files. Choose one you already have, or an
-            empty folder for a new project.
-          </p>
-          <div className="mt-4 flex justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => void choose()}
-              className={PRIMARY_BUTTON}
-            >
-              Open folder…
-            </button>
-            <button
-              type="button"
-              onClick={() => setDialog({ kind: "account" })}
-              className="h-8 rounded-md border bg-background px-3 text-[13px] font-medium hover:bg-muted"
-            >
-              {signedIn ? "Open from your account…" : "Sign in…"}
-            </button>
-          </div>
-        </div>
+      <>
+        <ProjectPicker
+          onOpen={openProject}
+          onOpenFromAccount={() => setDialog({ ask: "projects" })}
+        />
         {accountDialog}
-      </div>
+      </>
     );
   }
 
@@ -335,20 +386,37 @@ export function Desktop() {
       <App
         key={session.id}
         store={session.appStore}
-        onSwitchProject={() => void choose()}
+        onSwitchProject={closeProject}
+        onRenameProject={renameProject}
         status={status}
         actions={
           <>
-            <button
-              type="button"
-              className={HEADER_BUTTON}
-              onClick={() => setDialog({ kind: "account" })}
-            >
-              {signedIn ? "Account" : "Sign in"}
-            </button>
             <button type="button" className={HEADER_BUTTON} onClick={publish}>
+              <Send className="size-3.5" aria-hidden />
               Publish
             </button>
+            {signedIn ? (
+              <AccountMenu
+                account={account}
+                linked={Boolean(session.projectId)}
+                onLink={link}
+                onUnlink={unlink}
+                onManage={() =>
+                  void invoke<string>("account_server").then((url) =>
+                    openUrl(`${url}/account`),
+                  )
+                }
+                onSignOut={signOut}
+              />
+            ) : (
+              <button
+                type="button"
+                className={HEADER_BUTTON}
+                onClick={() => setDialog({ ask: "sign-in" })}
+              >
+                Sign in
+              </button>
+            )}
           </>
         }
       />

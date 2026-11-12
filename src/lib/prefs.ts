@@ -27,6 +27,13 @@ export const saveOpenPage = (path: string) => remember("cursive.page", path);
 /** The project folder the desktop app had open last. */
 export const loadFolder = () => recall("cursive.folder");
 export const saveFolder = (path: string) => remember("cursive.folder", path);
+export function forgetFolder(): void {
+  try {
+    localStorage.removeItem("cursive.folder");
+  } catch {
+    // Storage is off.
+  }
+}
 
 export function loadClosedFolders(): string[] {
   try {
