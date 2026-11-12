@@ -1,4 +1,4 @@
-import { PanelLeft } from "lucide-react";
+import { PanelLeft, Play } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Editor, type EditorChange } from "@/components/Editor";
@@ -33,6 +33,11 @@ import {
   type ProjectStore,
   type TreeNode,
 } from "@/lib/project";
+import { isPresentation, NEW_PRESENTATION } from "@/slides/deck";
+import { Presenter } from "@/slides/Presenter";
+import { SlideSidebar } from "@/slides/SlideSidebar";
+import { SlideStage } from "@/slides/SlideStage";
+import { useDeck } from "@/slides/use-deck";
 
 const MODES: Array<{ id: Mode; label: string; hint: string }> = [
   { id: "visual", label: "Visual", hint: "The page as blocks" },
@@ -111,6 +116,8 @@ export default function App({
   const [deleting, setDeleting] = useState<TreeNode | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
+  // An open presentation lists its slides in the sidebar, until its pages are asked for.
+  const [pagesShown, setPagesShown] = useState(false);
   const focusEditor = useRef<(() => void) | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
   // Changes from elsewhere that arrived before the project was loaded.
@@ -181,6 +188,15 @@ export default function App({
   );
 
   const tree = useMemo(() => (project ? buildTree(project) : []), [project]);
+  const presentations = useMemo(
+    () =>
+      new Set(
+        Object.entries(project?.pages ?? {})
+          .filter(([, file]) => isPresentation(readPage(file)))
+          .map(([path]) => path),
+      ),
+    [project],
+  );
   const source = project && active ? (project.pages[active] ?? null) : null;
   const page = useMemo(() => (source === null ? null : readPage(source)), [source]);
   const words = useMemo(
@@ -226,6 +242,7 @@ export default function App({
       saveOpenPage(path);
     }
     setNavOpen(false);
+    setPagesShown(false);
   };
 
   const switchMode = (next: Mode) => {
@@ -262,18 +279,19 @@ export default function App({
     saveClosedFolders([...next]);
   };
 
-  const newPage = (folder: string) => {
+  const newPage = (folder: string, file = "") => {
     const current = syncFileName();
     if (!current) return;
     const path = freePath(current, folder, "Untitled", ".md");
-    commit({ ...current, pages: { ...current.pages, [path]: "" } });
+    commit({ ...current, pages: { ...current.pages, [path]: file } });
     setActive(path);
     setOpened((n) => n + 1);
     setMode("visual");
     saveOpenPage(path);
     if (folder) setFolderOpen(folder, true);
     setNavOpen(false);
-    void persist(store.writePage(path, ""));
+    setPagesShown(false);
+    void persist(store.writePage(path, file));
     requestAnimationFrame(() => titleInput.current?.focus());
   };
 
@@ -309,6 +327,7 @@ export default function App({
     void persist(store.remove(node.path));
   };
 
+  const deck = useDeck(page, active, update);
   const title = page?.title.trim() ?? "";
   useEffect(() => {
     document.title = title ? `${title} · Cursive` : "Cursive";
@@ -339,22 +358,34 @@ export default function App({
 
   return (
     <div className={cn("app", navOpen && "nav-open")}>
-      <Sidebar
-        projectName={project.name}
-        tree={tree}
-        active={active}
-        closed={closed}
-        renaming={renaming}
-        onOpen={open}
-        onToggle={(path) => setFolderOpen(path, closed.has(path))}
-        onNewPage={newPage}
-        onNewFolder={newFolder}
-        onRename={setRenaming}
-        onRenameFolder={renameFolder}
-        onDelete={setDeleting}
-        onSwitchProject={onSwitchProject}
-        switchLabel={switchLabel}
-      />
+      {deck && page && !pagesShown ? (
+        <SlideSidebar
+          deck={deck}
+          title={page.title}
+          onTitle={(next) => update({ ...page, title: next })}
+          onTitleDone={() => void syncFileName()}
+          onBack={() => setPagesShown(true)}
+        />
+      ) : (
+        <Sidebar
+          projectName={project.name}
+          presentations={presentations}
+          onNewPresentation={() => newPage("", NEW_PRESENTATION)}
+          tree={tree}
+          active={active}
+          closed={closed}
+          renaming={renaming}
+          onOpen={open}
+          onToggle={(path) => setFolderOpen(path, closed.has(path))}
+          onNewPage={newPage}
+          onNewFolder={newFolder}
+          onRename={setRenaming}
+          onRenameFolder={renameFolder}
+          onDelete={setDeleting}
+          onSwitchProject={onSwitchProject}
+          switchLabel={switchLabel}
+        />
+      )}
       <div className="scrim" onClick={() => setNavOpen(false)} />
 
       <main className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] bg-card shadow-[0_1px_2px_oklch(14.5%_0.008_326/5%),0_0_0_1px_var(--border)]">
@@ -362,7 +393,7 @@ export default function App({
           <button
             type="button"
             className="menu-button"
-            aria-label="Show pages"
+            aria-label={deck ? "Show slides" : "Show pages"}
             onClick={() => setNavOpen(true)}
           >
             <PanelLeft className="size-4" aria-hidden />
@@ -407,6 +438,16 @@ export default function App({
               ))}
             </div>
           )}
+          {deck && (
+            <button
+              type="button"
+              onClick={() => deck.present(true)}
+              className="inline-flex h-7 flex-none items-center gap-1.5 rounded-md border border-primary-edge bg-primary-fill px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary-fill/85"
+            >
+              <Play className="size-3.5" aria-hidden />
+              <span className="present-label">Present</span>
+            </button>
+          )}
           {actions}
         </header>
 
@@ -426,6 +467,8 @@ export default function App({
                 </button>
               </div>
             </div>
+          ) : deck && mode === "visual" ? (
+            <SlideStage deck={deck} opened={opened} />
           ) : mode === "visual" ? (
             <article className="page" key={opened}>
               <input
@@ -476,7 +519,12 @@ export default function App({
           </span>
           {active && <span className="path truncate font-mono">{active}</span>}
           <span className="flex-1" />
-          {page && (
+          {deck && (
+            <span>
+              Slide {deck.index + 1} of {deck.slides.length}
+            </span>
+          )}
+          {page && !deck && (
             <span>
               {words === 1 ? "1 word" : `${words.toLocaleString("en-US")} words`}
             </span>
@@ -484,6 +532,7 @@ export default function App({
         </footer>
       </main>
 
+      {deck?.presenting && <Presenter deck={deck} />}
       {deleting && (
         <ConfirmDialog
           title={`Delete “${deleting.label}”?`}

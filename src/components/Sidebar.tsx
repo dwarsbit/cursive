@@ -5,6 +5,7 @@ import {
   FolderOpen,
   FolderPlus,
   Plus,
+  Presentation,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
@@ -23,6 +24,9 @@ export interface SidebarProps {
   onOpen: (path: string) => void;
   onToggle: (path: string) => void;
   onNewPage: (folder: string) => void;
+  /** The pages that are presentations, by path. */
+  presentations?: ReadonlySet<string>;
+  onNewPresentation?: () => void;
   onNewFolder: () => void;
   onRename: (path: string | null) => void;
   onRenameFolder: (path: string, name: string) => void;
@@ -97,6 +101,7 @@ function Rows({
         const open = node.kind === "folder" && !props.closed.has(node.path);
         const current = node.path === props.active;
         const pad = { paddingLeft: 4 + depth * 16 };
+        const PageIcon = props.presentations?.has(node.path) ? Presentation : FileText;
         return (
           <li
             key={node.path}
@@ -161,7 +166,7 @@ function Rows({
             ) : (
               <div className={cn("row group", current && "row-active")} style={pad}>
                 <span className="size-5 flex-none" />
-                <FileText
+                <PageIcon
                   className={cn(
                     "size-3.5 flex-none",
                     current ? "text-tint" : "text-muted-foreground",
@@ -231,6 +236,17 @@ export function Sidebar(props: SidebarProps) {
           >
             <FolderPlus className="size-3.5" aria-hidden />
           </button>
+          {props.onNewPresentation && (
+            <button
+              type="button"
+              aria-label="New presentation"
+              title="New presentation"
+              onClick={props.onNewPresentation}
+              className="grid size-6 place-items-center rounded-md hover:bg-accent hover:text-foreground"
+            >
+              <Presentation className="size-3.5" aria-hidden />
+            </button>
+          )}
           <button
             type="button"
             aria-label="New page"

@@ -16,3 +16,8 @@
 - Open a project from your account in an empty folder on another computer.
 - Publish a project as a site with the Publish button: choose its address, publish again to bring it up to date, or unpublish it.
 - Open and edit your projects in a browser, at `/cursive` on the Polemic server. What you type is saved to your account as you type.
+- Make a presentation with the New presentation button in the sidebar. The sidebar lists its slides as small pictures: click one to work on it, drag it to another place, or delete it.
+- Write each slide as a 16:9 page of blocks, with a layout (title, title and content, big number or quote) and speaker notes. Type a divider to start the next slide.
+- See when a slide holds more than fits, and split it into two slides or make its text smaller.
+- Present a presentation full screen with the Present button. The arrow keys and a click move between slides, and Esc ends it.
+- A presentation is one Markdown file: slides between dividers, with a slide's layout in a `slide` code block and its notes in a `notes` code block.
