@@ -1,117 +1,192 @@
-# Cursive
+<p align="center">
+  <img src="assets/app-icon.svg" alt="Cursive app icon" height="80">
+</p>
 
-A Markdown editor in the style of Notion. You write in a visual mode with no
-Markdown syntax, switch to Markdown when you want the source, and publish a
-project as a web page. A project is notes, a presentation or a tutorial.
+<h1 align="center">Cursive</h1>
 
-Cursive is in early development: notes and presentations work, tutorials
-are still to come. It shares its interface kit, account and server
-with [Polemic](https://github.com/dwarsbit/polemic).
+<p align="center">
+  <strong>Write, present, teach</strong><br>
+  A Markdown editor with blocks, for notes, presentations and tutorials you publish as a site.
+</p>
 
-## What works today
+<p align="center">
+  <a href="https://github.com/dwarsbit/cursive/actions/workflows/ci.yml"><img src="https://github.com/dwarsbit/cursive/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/dwarsbit/cursive?color=9A4A1C" alt="License"></a>
+  <a href="https://github.com/dwarsbit/cursive/releases"><img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20browser-9A4A1C" alt="Platforms: macOS, Windows, Linux and the browser"></a>
+</p>
 
-- **Blocks**: text, three levels of heading, to-do, bulleted and numbered
-  lists, toggle, quote, callout, table, code with syntax colors, equation
-  and divider.
-- **Slash menu**: type `/` on a new line or after a space, then a few letters
-  to filter, and press Enter.
-- **Selection toolbar**: select text for bold, italic, underline,
-  strikethrough, inline code, highlight and link, or to turn the block into
-  another one.
-- **Block handle**: hover a block to add a block under it or drag it to
+<p align="center">
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="https://github.com/dwarsbit/cursive/releases">Releases</a> ·
+  <a href="https://github.com/dwarsbit/polemic">Polemic</a>
+</p>
+
+<p align="center">
+  <img src="assets/readme/editor.png" alt="The editor with the pages of a project on the left and a page with properties, a callout and a to-do list on the right" width="800">
+</p>
+
+Cursive is an open-source Markdown editor, for macOS, Windows, Linux and the
+browser. You write in blocks with no Markdown syntax, and every page stays a
+Markdown file in a folder on your computer. A project is notes, a
+presentation or a tutorial. A free [Polemic](https://github.com/dwarsbit/polemic)
+account adds online services: sync between your computers, editing in the
+browser and publishing a project as a site.
+
+Cursive is in early development. Version 0.1.0 is not released yet, so for
+now you run it from the source, as described under [Develop](#develop).
+
+## Features
+
+### Write
+
+- **Blocks**: text, headings, to-do, bulleted and numbered lists, toggle,
+  quote, callout, table, code with syntax colors, equation and divider.
+  Type `/` to pick one, or hover a block to add one under it or drag it to
   another place.
-- **Markdown underneath**: every block is read from and written to Markdown,
-  so a page opens in any other Markdown tool. Callouts are quotes that open
-  with `[!note]`, toggles are `<details>` elements and equations are TeX
-  between `$$`.
+- **Selection toolbar**: select text to make it bold, italic, underlined,
+  struck through, inline code, highlighted or a link, or to turn its block
+  into another one.
+- **Visual and Markdown mode**: switch with Cmd/Ctrl + /. Markdown mode
+  shows the page as its file, with the title in the front matter.
+- **Markdown underneath**: every block is read from and written to
+  Markdown, so a page opens in any other Markdown tool. Callouts are quotes
+  that open with `[!note]`, toggles are `<details>` elements and equations
+  are TeX between `$$`.
+- **Pages and properties**: a project is pages in folders, listed as a tree
+  in the sidebar. The front matter of a page shows under its title, as text
+  or as a list such as tags.
 
-- **Visual and Markdown mode**: switch with the buttons in the header or
-  Cmd/Ctrl + /. Markdown mode shows the page as its file, with the title in
-  the front matter.
+### Present
 
-- **Page tree**: a project is pages in folders. The sidebar lists them, and
-  you add, open and delete pages and folders there. A page's file is named
-  after its title.
-- **Page properties**: the front matter of a page's file shows under its
-  title, as text or as a list such as tags.
+- **Slides**: a presentation is a page that is a set of slides. The sidebar
+  lists them as small pictures, where you add, delete and drag them.
+- **Layouts and speaker notes**: each slide is a 16:9 page of blocks with a
+  layout: title, title and content, big number or quote. A slide that holds
+  more than fits says so, and you split it in two or make its text smaller.
+- **Present**: show the slides full screen and move between them with the
+  arrow keys. On a published site a presentation is a slide player.
+- **One Markdown file**: slides sit between dividers (`---`), with a
+  slide's layout in a `slide` code block and its notes in a `notes` code
+  block. Other Markdown tools show the whole talk as one document.
 
-- **Desktop app**: open a folder on your computer as a project. Each page is
-  a `.md` file in it, saved as you type, and a page or folder you delete
+### Teach
+
+- **Quizzes and assignments**: add a quiz with options, points, attempts
+  and an explanation, or an assignment with instructions, a due date and a
+  rubric.
+- **Tutorial blocks**: learning goals, key terms, a video, before and
+  after, fill in the blanks, put in order, an exercise with a hint and a
+  model answer, and flashcards.
+- **Progress for readers**: on a published tutorial, readers check their
+  answers, see their points and mark pages as complete. The correct answers
+  stay on the server until a quiz is answered.
+- **Learners and grading** (paid plan): readers sign in with a Polemic
+  account to keep their progress and hand in assignments as text or a file.
+  You see their work under **Publish → Learners**, give points per
+  criterion and write feedback.
+
+### Publish
+
+- **Desktop app**: open a folder on your computer as a project. Each page
+  is a `.md` file in it, saved as you type, and a page or folder you delete
   moves to the trash.
-- **Account and sync**: sign in to your Polemic account from the Account
-  button, then sync the folder to your account. Changes travel both ways,
-  also the ones you made offline, and two changes to the same page are both
-  kept. On another computer, open the project from your account in an empty
-  folder.
-- **Publish**: the Publish button makes a site of the project's pages, at an
-  address you choose under the server's sites address. Publish again to bring
-  the site up to date, or unpublish it.
-- **In the browser**: the Polemic server serves Cursive at `/cursive`, where
-  you open and edit the projects in your account. Pages are saved to the
-  account as you type.
-
-- **Presentations**: the New presentation button in the sidebar makes a page
-  that is a set of slides. The sidebar lists the slides as small pictures,
-  where you add, delete and drag them. Each slide is a 16:9 page of blocks
-  with a layout (title, title and content, big number or quote) and speaker
-  notes. A slide that holds more than fits says so, and you split it in two
-  or make its text smaller. Present shows the slides full screen; the arrow
-  keys move between them. On a published site a presentation is a slide
-  player.
-- **A presentation's file**: a page with `type: presentation` in its front
-  matter. Slides are separated by a divider (`---`); a slide's layout sits in
-  a `slide` code block at its start and its notes in a `notes` code block, so
-  other Markdown tools show the whole talk as one document.
+- **Sync** (Polemic account): sync the folder to your account. Changes
+  travel both ways, also the ones you made offline, and two changes to the
+  same page are both kept.
+- **In the browser** (Polemic account): open and edit the projects in your
+  account at `/cursive` on the Polemic server.
+- **Sites** (Polemic account): the **Publish** button makes a site of the
+  project's pages, at an address you choose. Publish again to bring the
+  site up to date, or unpublish it.
+- **Themes**: give a site one of six themes: Cursive, Journal, Plum,
+  Blueprint, Midnight or Poster. A theme sets the colors, typefaces and
+  shapes of every page, slide and quiz.
 
 Sync carries the pages, the `.md` files. An empty folder stays on the
 computer it was made on.
 
-## Development
+## Compared with Notion and Obsidian
 
-Cursive is a React app built with Vite, on Tiptap for the editor and Tailwind
-for the styles. The desktop app is a Tauri shell around it. You need Node 22
-and pnpm, and for the desktop app Rust and the
-[Tauri prerequisites](https://tauri.app/start/prerequisites/).
+| | Cursive | Notion | Obsidian |
+| --- | --- | --- | --- |
+| Runs on | Desktop and browser | Browser, desktop and mobile | Desktop and mobile |
+| Pages are Markdown files on your own machine | Yes | No | Yes |
+| Open source | Yes | No | No |
+| Block editor with a `/` menu | Yes | Yes | No |
+| Markdown source of every page | Yes | No | Yes |
+| Publish as a site | Yes, with an account | Yes | Yes, as a paid add-on |
+| Slides | Yes | No | Yes |
+| Quizzes and assignments | Yes | No | No |
+| Mobile app | No | Yes | Yes |
 
-```sh
+- **Compared with Notion**: Notion keeps your pages in its own workspace
+  online, with databases and teams. Cursive keeps each page as a Markdown
+  file in a folder you choose, and has no databases.
+- **Compared with Obsidian**: both work on a folder of Markdown files.
+  Obsidian has links between notes, a graph and plugins. Cursive has a
+  block editor, slides with layouts, and quizzes and assignments.
+- **Switching to Cursive**: open any folder of Markdown files as a project.
+  Cursive reads the front matter of each file as the page's properties.
+
+## Develop
+
+Cursive is a Tauri app: a React front end in `src/` and a Rust back end in
+`src-tauri/`. The same front end runs in a browser.
+
+### Requirements
+
+- Node.js 22 or later and pnpm
+- Rust (stable) with cargo and the
+  [Tauri prerequisites](https://tauri.app/start/prerequisites/), for the
+  desktop app
+
+### Run
+
+```bash
 pnpm install
-pnpm dev          # the browser app at http://localhost:1430
 pnpm tauri dev    # the desktop app
-pnpm test
-pnpm lint
-pnpm build
-cargo test --manifest-path src-tauri/Cargo.toml
+pnpm dev          # a demo in the browser, at http://localhost:1430
 pnpm dev:web      # the browser app as the server serves it, at /cursive/
-pnpm build:web    # that app, built into dist-web
 ```
 
-`pnpm dev` in a browser is a demo: it keeps a sample project in the browser's
-own storage. `pnpm dev:web` needs a Polemic server on this computer
-([polemic-server](https://github.com/dwarsbit/polemic-server)'s `pnpm dev:api`),
-or the one `CURSIVE_SERVER` names, for `/api`; sign in on that server first.
-The desktop app signs in to `https://app.polemicapp.com`; start it with
-`CURSIVE_SERVER=http://localhost:3000` for a server on this computer.
+`pnpm dev` keeps a sample project in the browser's own storage.
+`pnpm dev:web` needs a Polemic server on this computer
+([polemic-server](https://github.com/dwarsbit/polemic-server)'s
+`pnpm dev:api`), or the one `CURSIVE_SERVER` names; sign in on that server
+first. The desktop app signs in to `https://app.polemicapp.com`; start it
+with `CURSIVE_SERVER=http://localhost:3000` for a server on this computer.
 
-- `src/editor`: the document model. `extensions.ts` lists the blocks,
-  `blocks.ts` what the slash menu offers, `callout.ts` and `toggle.ts` the
-  blocks Cursive adds with their Markdown form.
-- `src/components`: the two editors and their menus.
-- `src/lib/page-file.ts`: a page as a Markdown file with front matter.
-- `src/lib/project.ts`: a project as a folder of pages, and the `ProjectStore`
-  that keeps it. `browser-store.ts` is the store for the browser,
-  `desktop-store.ts` the one for the desktop app.
-- `src/lib/project-doc.ts`: a project as the server keeps it, one Yjs
-  document in the layout of Polemic's projects. `server.ts` is the server's
-  API, `link-sync.ts` the desktop app's sync of a folder with the account,
-  `server-store.ts` the store for a project open in the browser.
-- `src-tauri`: the desktop app. `src/project.rs` reads and writes the
-  project's folder, `src/account.rs` signs in and sends the requests to the
-  server, `src/link.rs` remembers which project a folder syncs with.
+### Check
+
+CI runs the same checks on every pull request.
+
+```bash
+pnpm lint
+pnpm test
+cd src-tauri && cargo test
+```
+
+### Build
+
+```bash
+pnpm tauri build  # the desktop app
+pnpm build:web    # the browser app, into dist-web
+```
+
+### More
+
+- `src/editor`: the blocks and their Markdown form
+- `src/components`: the two editors, the sidebar and the dialogs
+- `src/lib`: a page as a Markdown file (`page-file.ts`), a project as a
+  folder of pages (`project.ts`) and its stores for the desktop app, the
+  demo and the server, and sync (`link-sync.ts`)
+- `src-tauri`: the desktop app, which reads and writes the project's
+  folder and signs in to the account
 - `docker/web`: the image of the browser build, which the **Web image**
-  workflow pushes to `ghcr.io/dwarsbit/cursive-web`.
-- [docs/releasing.md](docs/releasing.md): how a release is made.
-- `src/index.css`: the Polemic design tokens with Cursive's rust as the one
-  tint, and the styles of the blocks.
+  workflow pushes to `ghcr.io/dwarsbit/cursive-web`
+- [Releasing](docs/releasing.md): how a version is built and published
+- [Content style](CONTENT.md): the rules for all public text, from the
+  Polemic design system. Change them there first.
 
 ## License
 
