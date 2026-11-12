@@ -15,6 +15,7 @@ import {
 import { loadFolder, saveFolder } from "@/lib/prefs";
 import type { Project, ProjectStore } from "@/lib/project";
 import {
+  desktopSaveFile,
   desktopTransport,
   Server,
   ServerError,
@@ -372,6 +373,7 @@ export function Desktop() {
             }
           }}
           openUrl={openUrl}
+          saveFile={desktopSaveFile}
           onClose={() => setDialog(null)}
         />
       )}

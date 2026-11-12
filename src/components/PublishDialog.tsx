@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BUTTON, Dialog, messageOf, PRIMARY_BUTTON, QUIET_BUTTON } from "./Dialog";
 import { LearnersDialog } from "./LearnersDialog";
-import type { Server, SiteState } from "@/lib/server";
+import type { SaveFile, Server, SiteState } from "@/lib/server";
 
 const day = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", {
@@ -20,12 +20,14 @@ export function PublishDialog({
   projectId,
   prepare,
   openUrl,
+  saveFile,
   onClose,
 }: {
   server: Server;
   projectId: string;
   prepare?: () => Promise<void>;
   openUrl: (url: string) => void;
+  saveFile: SaveFile;
   onClose: () => void;
 }) {
   const [state, setState] = useState<SiteState | null>(null);
@@ -82,6 +84,7 @@ export function PublishDialog({
       <LearnersDialog
         server={server}
         projectId={projectId}
+        saveFile={saveFile}
         onClose={() => setLearners(false)}
       />
     );

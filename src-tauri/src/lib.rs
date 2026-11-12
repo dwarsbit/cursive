@@ -21,6 +21,7 @@ pub fn run() {
             account::account_sign_out,
             account::open_in_browser,
             account::server_request,
+            account::server_download,
             link::link_load,
             link::link_save,
             link::link_remove,

@@ -47,7 +47,33 @@ export interface Submission {
   assignment: string;
   title: string;
   text: string;
+  /** A file handed in with the text. */
+  file: { name: string; size: number; contentType: string } | null;
+  /** What the assignment gives on the published site now; null when the site no longer has it. */
+  points: number | null;
+  rubric: Criterion[];
+  grade: Grade | null;
   submittedAt: string;
+}
+
+export interface Criterion {
+  criterion: string;
+  points: number;
+}
+
+/** The author's grade for handed-in work. */
+export interface Grade {
+  score: number;
+  /** The points per criterion of the rubric; empty without one. */
+  criteria: number[];
+  feedback: string;
+  gradedAt: string;
+}
+
+/** Which handed-in work: the page of the site and the assignment on it. */
+export interface WorkRef {
+  page: string;
+  assignment: string;
 }
 
 /** A reader who signed in to the published tutorial. */
@@ -62,7 +88,7 @@ export interface Learner {
 }
 
 export interface Learners {
-  /** The published site's pages, and the points its quizzes give. */
+  /** The published site's pages, and the points its quizzes and assignments give. */
   pages: number;
   points: number;
   learners: Learner[];
@@ -244,4 +270,52 @@ export class Server {
   learners(id: string): Promise<Learners> {
     return this.call("GET", `/api/projects/${encodeURIComponent(id)}/learners`);
   }
+
+  /** Grades a learner's work: points per criterion of the rubric, or one score. */
+  grade(
+    id: string,
+    learnerId: string,
+    work: WorkRef,
+    grade: { score?: number; criteria?: number[]; feedback: string },
+  ): Promise<Grade> {
+    return this.call("PUT", `${learnerPath(id, learnerId)}/grade`, {
+      json: { ...work, ...grade },
+    });
+  }
+
+  clearGrade(id: string, learnerId: string, work: WorkRef): Promise<void> {
+    return this.call("DELETE", `${learnerPath(id, learnerId)}/grade?${workQuery(work)}`);
+  }
 }
+
+const learnerPath = (id: string, learnerId: string) =>
+  `/api/projects/${encodeURIComponent(id)}/learners/${encodeURIComponent(learnerId)}`;
+
+const workQuery = (work: WorkRef) =>
+  `page=${encodeURIComponent(work.page)}&assignment=${encodeURIComponent(work.assignment)}`;
+
+/** The API path of the file a learner handed in with their work. */
+export const handedInFilePath = (id: string, learnerId: string, work: WorkRef) =>
+  `${learnerPath(id, learnerId)}/file?${workQuery(work)}`;
+
+/** Saves a file from the server's API on this computer, under `name`. */
+export type SaveFile = (path: string, name: string) => Promise<void>;
+
+/** In the browser the session cookie gets the file; the browser saves it as a download. */
+export const browserSaveFile: SaveFile = async (path, name) => {
+  const link = document.createElement("a");
+  link.href = path;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
+/** On the desktop the Rust side gets the file and asks where to save it. */
+export const desktopSaveFile: SaveFile = async (path, name) => {
+  try {
+    await invoke<boolean>("server_download", { path, name });
+  } catch (error) {
+    throw new ServerError(0, "download", typeof error === "string" ? error : String(error));
+  }
+};

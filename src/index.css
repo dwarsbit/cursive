@@ -1580,6 +1580,66 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.learners .work .file {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+}
+.learners .work .file .name {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.learners .grade {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.learners .grade .line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.learners .grade .grow {
+  min-width: 0;
+  flex: 1;
+}
+.learners .grade .of {
+  min-width: 3.5em;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.learners .grade input,
+.learners .grade textarea {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+  outline: none;
+}
+.learners .grade input {
+  width: 4.5em;
+  height: 28px;
+  padding: 0 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.learners .grade textarea {
+  min-height: 52px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+.learners .grade input:focus,
+.learners .grade textarea:focus {
+  border-color: var(--primary-edge);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-fill) 18%, transparent);
+}
 .confirm:has(.learners) {
   width: min(36rem, calc(100vw - 2rem));
 }

@@ -449,6 +449,7 @@ pub fn check_request(method: &str, path: &str) -> Result<reqwest::Method, String
     match method {
         "GET" => Ok(reqwest::Method::GET),
         "POST" => Ok(reqwest::Method::POST),
+        "PUT" => Ok(reqwest::Method::PUT),
         "PATCH" => Ok(reqwest::Method::PATCH),
         "DELETE" => Ok(reqwest::Method::DELETE),
         _ => Err("unsupported method".into()),
@@ -570,10 +571,73 @@ pub async fn server_request(
     request_with(&server()?, &OsStore, &method, &path, json, bytes).await
 }
 
+/// A file name without folders or characters a file system refuses.
+pub fn download_name(name: &str) -> String {
+    let base = name.rsplit(['/', '\\']).next().unwrap_or("");
+    let clean: String = base
+        .chars()
+        .filter(|c| !c.is_control() && !matches!(c, ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+        .collect();
+    let clean = clean.trim().trim_start_matches('.').to_string();
+    if clean.is_empty() {
+        "file".into()
+    } else {
+        clean
+    }
+}
+
+/// Saves a file from the server's API where the user chooses in the
+/// system's save dialog. False when they closed the dialog.
+#[tauri::command]
+pub async fn server_download(
+    app: tauri::AppHandle,
+    path: String,
+    name: String,
+) -> Result<bool, String> {
+    use tauri_plugin_dialog::DialogExt;
+    check_request("GET", &path)?;
+    let server = server()?;
+    let Some(token) = token_with(&server, &OsStore) else {
+        return Err("Sign in to your Polemic account first.".into());
+    };
+    let suggested = download_name(&name);
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        app.dialog()
+            .file()
+            .set_file_name(&suggested)
+            .blocking_save_file()
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    let Some(picked) = picked else {
+        return Ok(false);
+    };
+    let to = picked.into_path().map_err(|e| e.to_string())?;
+    let response = client()?
+        .get(format!("{server}{path}"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|_| "The server can't be reached. Check your connection.".to_string())?;
+    if !response.status().is_success() {
+        return Err(error_message(response).await);
+    }
+    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    std::fs::write(&to, &bytes).map_err(|e| format!("The file could not be saved: {e}"))?;
+    Ok(true)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::cell::RefCell;
+
+    #[test]
+    fn names_a_download_without_folders() {
+        assert_eq!(download_name("../../My items.pdf"), "My items.pdf");
+        assert_eq!(download_name("C:\\work\\a?.txt"), "a.txt");
+        assert_eq!(download_name(".."), "file");
+    }
 
     #[derive(Default)]
     struct MemoryStore(RefCell<Option<String>>);
@@ -665,7 +729,8 @@ mod tests {
         assert!(check_request("POST", "/api/projects/abc/document/update").is_ok());
         assert!(check_request("GET", "/account").is_err());
         assert!(check_request("GET", "/api/../account").is_err());
-        assert!(check_request("PUT", "/api/me").is_err());
+        assert!(check_request("PUT", "/api/projects/abc/learners/u1/grade").is_ok());
+        assert!(check_request("TRACE", "/api/me").is_err());
         assert!(check_request("GET", "https://evil.example/api/me").is_err());
     }
 
