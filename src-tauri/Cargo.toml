@@ -1,6 +1,6 @@
 [package]
 name = "cursive"
-version = "0.0.0"
+version = "0.1.0"
 description = "Cursive - a Markdown editor for notes, presentations and tutorials"
 authors = ["Leon"]
 edition = "2021"
