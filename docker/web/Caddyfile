@@ -1,0 +1,32 @@
+{
+	admin off
+	auto_https off
+}
+
+# The port can be moved: on a host where the containers share one
+# network address, the Polemic editor's image already listens on 80.
+:{$PORT:80} {
+	root * /srv
+	encode zstd gzip
+
+	# Vite puts a content hash in these file names.
+	handle /cursive/assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# Every other path under /cursive is the app (/cursive/<id> opens a project).
+	@app path /cursive /cursive/*
+	handle @app {
+		header Cache-Control "no-cache"
+		try_files {path} /cursive/index.html
+		file_server
+	}
+
+	# Nothing else is served here: /api and the rest belong to the server's
+	# own proxy, and a request that reaches this container by mistake gets
+	# a 404 rather than the app's page.
+	handle {
+		respond 404
+	}
+}

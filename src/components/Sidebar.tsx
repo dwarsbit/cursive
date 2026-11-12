@@ -29,6 +29,7 @@ export interface SidebarProps {
   onDelete: (node: TreeNode) => void;
   /** Opens another project; only where the app can. */
   onSwitchProject?: () => void;
+  switchLabel?: string;
 }
 
 function RowButton({
@@ -208,8 +209,8 @@ export function Sidebar(props: SidebarProps) {
         {props.onSwitchProject && (
           <button
             type="button"
-            aria-label="Open another folder…"
-            title="Open another folder…"
+            aria-label={props.switchLabel}
+            title={props.switchLabel}
             onClick={props.onSwitchProject}
             className="grid size-6 flex-none place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
           >

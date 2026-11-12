@@ -1,0 +1,258 @@
+name: Release
+
+# Releases the version of the "## X.Y.Z (unreleased)" heading in
+# CHANGELOG.md: sets the version everywhere, commits to main and pushes
+# the tag vX.Y.Z, creates a draft GitHub Release with the version's
+# changelog section as notes, then builds the installers for every
+# platform and attaches them to it. Once every build has succeeded, the
+# publish job publishes the release as the latest one, not a draft or a
+# pre-release. If any step fails after the push, the rollback job
+# deletes the draft and the tag and reverts the release commit, so the
+# workflow can run again once the cause is fixed. Pushes use GITHUB_TOKEN,
+# so they do not trigger other workflows: anything a release needs runs as
+# a job here.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.push.outputs.commit }}
+      release-id: ${{ steps.release.outputs.id }}
+    steps:
+      - name: Release from main only
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run this workflow from main (got ${GITHUB_REF})."
+          exit 1
+
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Read the version from the changelog
+        id: version
+        run: |
+          versions=$(sed -nE 's/^## (.+) \(unreleased\)$/\1/p' CHANGELOG.md)
+          if [ -z "$versions" ]; then
+            echo "::error::CHANGELOG.md has no '## X.Y.Z (unreleased)' heading."
+            exit 1
+          fi
+          if [ "$(echo "$versions" | wc -l)" -ne 1 ]; then
+            echo "::error::CHANGELOG.md has more than one unreleased version: $(echo $versions)"
+            exit 1
+          fi
+          echo "VERSION=$versions" >> "$GITHUB_ENV"
+          echo "version=$versions" >> "$GITHUB_OUTPUT"
+          echo "Releasing $versions"
+
+      # Windows installers (MSI) only take numeric versions, so no pre-releases.
+      - name: Validate the version
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version '$VERSION': expected X.Y.Z"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::Tag v$VERSION already exists."
+            exit 1
+          fi
+
+      # Any CI run of this commit on main counts: a push, or the run the
+      # rollback job starts after reverting a failed release.
+      - name: Require green CI on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          conclusion=$(gh run list --workflow ci.yml --branch main --commit "$sha" \
+            --limit 1 --json status,conclusion \
+            --jq '.[0] | if . == null then "missing" elif .status != "completed" then .status else .conclusion end')
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::CI on $sha is '$conclusion', not 'success'."
+            exit 1
+          fi
+
+      - name: Bump the version
+        run: python scripts/bump_version.py "$VERSION"
+
+      - name: Commit, tag and push
+        id: push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore: release v$VERSION"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push --atomic origin HEAD:main "v$VERSION"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create the draft GitHub Release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The release notes are the version's section of the changelog.
+          awk -v v="$VERSION" '
+            $0 ~ "^## v?" v "( |$)" { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+            -f tag_name="v$VERSION" -f name="Cursive v$VERSION" \
+            -F body=@notes.md -F draft=true --jq .id)
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.os }}
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: "--target aarch64-apple-darwin"
+          - os: macos-latest
+            args: "--target x86_64-apple-darwin"
+          - os: ubuntu-latest
+            args: ""
+          - os: windows-latest
+            args: ""
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ needs.prepare.outputs.version }}
+
+      # Signs and notarizes the macOS builds once the APPLE_* secrets exist;
+      # without them the builds stay unsigned. Exported only when set, since
+      # an empty APPLE_CERTIFICATE makes the Tauri bundler fail.
+      - name: Configure macOS signing
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "::warning::APPLE_CERTIFICATE not set; macOS build will be unsigned"
+            exit 0
+          fi
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name secret is missing"
+              exit 1
+            fi
+            echo "$name=${!name}" >> "$GITHUB_ENV"
+          done
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libdbus-1-dev patchelf
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.prepare.outputs.release-id }}
+          args: ${{ matrix.args }}
+
+  # The release stays a draft while the builds upload to it, so nobody
+  # downloads a half-finished release; it is published once all succeed.
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release-id }}
+        run: |
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -F draft=false -F prerelease=false -f make_latest=true --silent
+
+  # Undoes a release that failed or was cancelled after its commit and tag
+  # were pushed: deletes the draft GitHub Release (with any installers
+  # already attached) and the tag, and reverts the release commit on main
+  # so the changelog heading is unreleased again. Its pushes trigger no
+  # workflows, so it starts CI on the revert for the next release.
+  rollback:
+    needs: [prepare, build, publish]
+    if: (failure() || cancelled()) && needs.prepare.outputs.commit != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      COMMIT: ${{ needs.prepare.outputs.commit }}
+      RELEASE_ID: ${{ needs.prepare.outputs.release-id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 50
+
+      - name: Delete the draft GitHub Release
+        if: env.RELEASE_ID != ''
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"
+
+      - name: Delete the tag
+        run: git push origin ":refs/tags/v$VERSION"
+
+      - name: Revert the release commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git revert --no-edit "$COMMIT"
+          git commit --amend -m "chore: revert the failed release v$VERSION" -m "This reverts commit $COMMIT."
+          git push origin HEAD:main
+
+      - name: Run CI on the revert
+        run: gh workflow run ci.yml --ref main

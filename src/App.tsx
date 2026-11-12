@@ -17,8 +17,10 @@ import {
   saveOpenPage,
   type Mode,
 } from "@/lib/prefs";
+import type { PageChange } from "@/lib/project-doc";
 import {
   ancestorsOf,
+  applyChanges,
   baseName,
   buildTree,
   countPages,
@@ -51,6 +53,20 @@ function deleteQuestion(node: TreeNode, place: ProjectStore["place"]): string {
     : `${what} removed from this project. You can't undo this.`;
 }
 
+/** What the status bar says when everything is saved. */
+const SAVED: Record<ProjectStore["place"], string> = {
+  disk: "Saved",
+  browser: "Saved in this browser",
+  account: "Saved to your account",
+};
+
+/** What the app says about saving and syncing, when it has more to say than "Saved". */
+export interface Status {
+  text: string;
+  /** Something needs attention: shown with the warning dot. */
+  warn?: boolean;
+}
+
 /** The first page of a tree, top to bottom. */
 function firstPage(nodes: TreeNode[]): string | null {
   for (const node of nodes) {
@@ -64,14 +80,28 @@ export default function App({
   store,
   firstOpen,
   onSwitchProject,
+  switchLabel = "Open another folder…",
+  actions,
+  status,
 }: {
   store: ProjectStore;
   /** The page a new visitor sees first. */
   firstOpen?: string;
   /** Opens another project, where the app can. */
   onSwitchProject?: () => void;
+  switchLabel?: string;
+  /** Buttons at the end of the header: the account, publishing. */
+  actions?: React.ReactNode;
+  status?: Status;
 }) {
   const [project, setProject] = useState<Project | null>(null);
+  // The project as of the last change, also before the screen shows it:
+  // changes from elsewhere can arrive several at a time.
+  const fresh = useRef<Project | null>(null);
+  const commit = (next: Project) => {
+    fresh.current = next;
+    setProject(next);
+  };
   const [active, setActive] = useState<string | null>(null);
   // Counts the times a page or a mode was opened: each one starts a fresh editor.
   const [opened, setOpened] = useState(0);
@@ -83,18 +113,21 @@ export default function App({
   const [navOpen, setNavOpen] = useState(false);
   const focusEditor = useRef<(() => void) | null>(null);
   const titleInput = useRef<HTMLInputElement>(null);
+  // Changes from elsewhere that arrived before the project was loaded.
+  const early = useRef<PageChange[]>([]);
 
   useEffect(() => {
     let current = true;
     store.load().then(
       (loaded) => {
         if (!current) return;
-        const tree = buildTree(loaded);
+        const { project: latest } = applyChanges(loaded, early.current);
+        early.current = [];
         const wanted = [loadOpenPage(), firstOpen].find(
-          (path) => path && path in loaded.pages,
+          (path) => path && path in latest.pages,
         );
-        setProject(loaded);
-        setActive(wanted ?? firstPage(tree));
+        commit(latest);
+        setActive(wanted ?? firstPage(buildTree(latest)));
       },
       (error: unknown) =>
         current && setProblem(error instanceof Error ? error.message : String(error)),
@@ -112,6 +145,41 @@ export default function App({
         setProblem(error instanceof Error ? error.message : String(error)),
     );
 
+  // Pages changed elsewhere, on another computer or in another window,
+  // come into the open project. The open page starts a fresh editor
+  // when its text was replaced.
+  const takeChanges = useRef<(changes: PageChange[]) => void>(() => {});
+  useEffect(() => {
+    takeChanges.current = (changes) => {
+      const project = fresh.current;
+      if (!project) {
+        early.current.push(...changes);
+        return;
+      }
+      const { project: next, writes } = applyChanges(project, changes);
+      commit(next);
+      for (const [path, file] of writes) void persist(store.writePage(path, file));
+      if (active && active in next.pages) {
+        if (next.pages[active] !== project.pages[active]) setOpened((n) => n + 1);
+        return;
+      }
+      // The open page is gone: it was moved when its text is new on another path.
+      const moved = active
+        ? changes.find(
+            (change) => change.base === null && change.text === project.pages[active],
+          )
+        : undefined;
+      const path = moved?.path ?? firstPage(buildTree(next));
+      setActive(path);
+      setOpened((n) => n + 1);
+      if (path) saveOpenPage(path);
+    };
+  });
+  useEffect(
+    () => store.subscribe?.((changes) => takeChanges.current(changes)),
+    [store],
+  );
+
   const tree = useMemo(() => (project ? buildTree(project) : []), [project]);
   const source = project && active ? (project.pages[active] ?? null) : null;
   const page = useMemo(() => (source === null ? null : readPage(source)), [source]);
@@ -124,7 +192,7 @@ export default function App({
     if (!project || !active) return;
     const file = writePage(next);
     if (file === project.pages[active]) return;
-    setProject({ ...project, pages: { ...project.pages, [active]: file } });
+    commit({ ...project, pages: { ...project.pages, [active]: file } });
     void persist(store.writePage(active, file));
   };
 
@@ -143,7 +211,7 @@ export default function App({
     );
     if (wanted === active) return project;
     const renamed = renameIn(project, active, wanted);
-    setProject(renamed);
+    commit(renamed);
     setActive(wanted);
     saveOpenPage(wanted);
     void persist(store.rename(active, wanted));
@@ -198,7 +266,7 @@ export default function App({
     const current = syncFileName();
     if (!current) return;
     const path = freePath(current, folder, "Untitled", ".md");
-    setProject({ ...current, pages: { ...current.pages, [path]: "" } });
+    commit({ ...current, pages: { ...current.pages, [path]: "" } });
     setActive(path);
     setOpened((n) => n + 1);
     setMode("visual");
@@ -212,7 +280,7 @@ export default function App({
   const newFolder = () => {
     if (!project) return;
     const path = freePath(project, "", "New folder", "");
-    setProject({ ...project, folders: [...project.folders, path] });
+    commit({ ...project, folders: [...project.folders, path] });
     setRenaming(path);
     void persist(store.createFolder(path));
   };
@@ -221,7 +289,7 @@ export default function App({
     if (!project) return;
     const wanted = freePath(project, parentOf(path), fileNameFor(name), "", path);
     if (wanted === path) return;
-    setProject(renameIn(project, path, wanted));
+    commit(renameIn(project, path, wanted));
     if (active?.startsWith(`${path}/`)) {
       const moved = wanted + active.slice(path.length);
       setActive(moved);
@@ -233,7 +301,7 @@ export default function App({
   const remove = (node: TreeNode) => {
     if (!project) return;
     const next = removeFrom(project, node.path);
-    setProject(next);
+    commit(next);
     if (active && !(active in next.pages)) {
       setActive(firstPage(buildTree(next)));
       setOpened((n) => n + 1);
@@ -261,7 +329,7 @@ export default function App({
               onClick={onSwitchProject}
               className="mt-3 h-8 rounded-md border bg-background px-3 text-[13px] font-medium hover:bg-muted"
             >
-              Open another folder…
+              {switchLabel}
             </button>
           )}
         </div>
@@ -285,6 +353,7 @@ export default function App({
         onRenameFolder={renameFolder}
         onDelete={setDeleting}
         onSwitchProject={onSwitchProject}
+        switchLabel={switchLabel}
       />
       <div className="scrim" onClick={() => setNavOpen(false)} />
 
@@ -338,6 +407,7 @@ export default function App({
               ))}
             </div>
           )}
+          {actions}
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto" id="page-scroll">
@@ -398,14 +468,10 @@ export default function App({
           <span className="inline-flex min-w-0 items-center gap-1.5" role="status">
             <span
               aria-hidden
-              className={`size-1.5 flex-none rounded-full ${problem ? "bg-warning" : "bg-success"}`}
+              className={`size-1.5 flex-none rounded-full ${problem || status?.warn ? "bg-warning" : "bg-success"}`}
             />
             <span className="truncate">
-              {problem
-                ? `Not saved. ${problem}`
-                : store.place === "disk"
-                  ? "Saved"
-                  : "Saved in this browser"}
+              {problem ? `Not saved. ${problem}` : (status?.text ?? SAVED[store.place])}
             </span>
           </span>
           {active && <span className="path truncate font-mono">{active}</span>}

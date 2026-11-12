@@ -37,6 +37,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Build for the browser
+        run: pnpm build:web
+
   # Its own job, so a package mirror that doesn't answer can't hide the
   # result of the checks above.
   desktop:

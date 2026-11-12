@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { SAMPLE_PAGE, SAMPLE_PROJECT } from "./editor/sample";
 import { Desktop } from "./components/Desktop";
+import { Web } from "./components/Web";
 import { browserStore } from "./lib/browser-store";
 import { isDesktop } from "./lib/desktop-store";
 import "./index.css";
@@ -14,10 +15,14 @@ const applyTheme = () =>
 applyTheme();
 dark.addEventListener("change", applyTheme);
 
-// The desktop app keeps a project as a folder on disk; the browser
-// build keeps one in its own storage until projects sync with an account.
+// The desktop app keeps a project as a folder on disk. The web build
+// (`pnpm build:web`) runs on the Polemic server and keeps projects in
+// the account. Any other browser build is the demo, which keeps the
+// sample project in the browser's own storage.
 const app = isDesktop ? (
   <Desktop />
+) : import.meta.env.MODE === "web" ? (
+  <Web />
 ) : (
   <App store={browserStore(SAMPLE_PROJECT)} firstOpen={SAMPLE_PAGE} />
 );

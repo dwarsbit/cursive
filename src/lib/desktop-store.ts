@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { Folder } from "./link-sync";
 import type { Project, ProjectStore } from "./project";
 
 /** Is this the desktop app, not the browser build? */
@@ -15,7 +16,7 @@ const WRITE_DELAY = 400;
  */
 export function desktopStore(
   dir: string,
-): ProjectStore & { flush: () => Promise<void> } {
+): ProjectStore & { flush: () => Promise<void>; folder: Folder } {
   const pending = new Map<string, string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let waiting: Array<{ resolve: () => void; reject: (error: unknown) => void }> = [];
@@ -54,6 +55,17 @@ export function desktopStore(
   return {
     place: "disk",
     flush,
+    // The folder as a sync run uses it: in line with the app's own changes.
+    folder: {
+      read: async () => {
+        await flush().catch(() => {});
+        const project = await enqueue(() => invoke<Project>("project_load", { dir }));
+        return project.pages;
+      },
+      write: (path, source) =>
+        enqueue(() => invoke<void>("project_write_page", { dir, path, source })),
+      remove: (path) => enqueue(() => invoke<void>("project_remove", { dir, path })),
+    },
     load: () => invoke<Project>("project_load", { dir }).catch(fail),
     writePage: (path, source) => {
       pending.set(path, source);

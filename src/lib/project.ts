@@ -1,4 +1,5 @@
 import { readPage } from "./page-file";
+import { mergeText, type PageChange } from "./project-doc";
 
 /**
  * A project: a folder of Markdown files. Paths use `/` and are
@@ -12,10 +13,18 @@ export interface Project {
   pages: Record<string, string>;
 }
 
-/** Where a project is kept: the browser today, a folder on disk in the desktop app. */
+/**
+ * Where a project is kept: a folder on disk in the desktop app, the
+ * account in the browser, or the browser's own storage for the demo.
+ */
 export interface ProjectStore {
   /** Where the project is kept, for the status bar and the delete question. */
-  place: "browser" | "disk";
+  place: "browser" | "disk" | "account";
+  /**
+   * Tells of pages that changed outside this window: on another
+   * computer or in another browser tab.
+   */
+  subscribe?(listener: (changes: PageChange[]) => void): () => void;
   load(): Promise<Project>;
   writePage(path: string, source: string): Promise<void>;
   createFolder(path: string): Promise<void>;
@@ -171,4 +180,32 @@ export function removeFrom(project: Project, path: string): Project {
 export function ancestorsOf(path: string): string[] {
   const parts = path.split("/").slice(0, -1);
   return parts.map((_, index) => parts.slice(0, index + 1).join("/"));
+}
+
+/**
+ * The project after pages changed elsewhere. Where a page was also
+ * changed here since, both changes are kept, and `writes` lists the
+ * pages the store doesn't have in that form yet.
+ */
+export function applyChanges(
+  project: Project,
+  changes: PageChange[],
+): { project: Project; writes: Array<[path: string, source: string]> } {
+  const pages = { ...project.pages };
+  const writes: Array<[string, string]> = [];
+  for (const { path, base, text } of changes) {
+    const current = pages[path] ?? null;
+    if (current === text) continue;
+    if (text === null) {
+      // Deleted elsewhere. A page changed here since stays, and is written again.
+      if (current === base) delete pages[path];
+      else if (current !== null) writes.push([path, current]);
+    } else if (current === null || current === base) {
+      pages[path] = text;
+    } else {
+      pages[path] = mergeText(base ?? "", current, text);
+      writes.push([path, pages[path]]);
+    }
+  }
+  return { project: { ...project, pages }, writes };
 }
