@@ -4,8 +4,8 @@ A Markdown editor in the style of Notion. You write in a visual mode with no
 Markdown syntax, switch to Markdown when you want the source, and publish a
 project as a web page. A project is notes, a presentation or a tutorial.
 
-Cursive is in early development: notes projects work, presentations and
-tutorials are still to come. It shares its interface kit, account and server
+Cursive is in early development: notes and presentations work, tutorials
+are still to come. It shares its interface kit, account and server
 with [Polemic](https://github.com/dwarsbit/polemic).
 
 ## What works today
@@ -49,6 +49,19 @@ with [Polemic](https://github.com/dwarsbit/polemic).
 - **In the browser**: the Polemic server serves Cursive at `/cursive`, where
   you open and edit the projects in your account. Pages are saved to the
   account as you type.
+
+- **Presentations**: the New presentation button in the sidebar makes a page
+  that is a set of slides. The sidebar lists the slides as small pictures,
+  where you add, delete and drag them. Each slide is a 16:9 page of blocks
+  with a layout (title, title and content, big number or quote) and speaker
+  notes. A slide that holds more than fits says so, and you split it in two
+  or make its text smaller. Present shows the slides full screen; the arrow
+  keys move between them. On a published site a presentation is a slide
+  player.
+- **A presentation's file**: a page with `type: presentation` in its front
+  matter. Slides are separated by a divider (`---`); a slide's layout sits in
+  a `slide` code block at its start and its notes in a `notes` code block, so
+  other Markdown tools show the whole talk as one document.
 
 Sync carries the pages, the `.md` files. An empty folder stays on the
 computer it was made on.

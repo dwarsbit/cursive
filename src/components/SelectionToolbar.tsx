@@ -45,7 +45,14 @@ export function normalizeHref(input: string): string {
 }
 
 /** The toolbar that appears over selected text. */
-export function SelectionToolbar({ editor }: { editor: Editor }) {
+export function SelectionToolbar({
+  editor,
+  appendTo,
+}: {
+  editor: Editor;
+  /** Where the toolbar is put in the document; next to the page when left out. */
+  appendTo?: () => HTMLElement;
+}) {
   const [panel, setPanel] = useState<"none" | "turn" | "link">("none");
   const [href, setHref] = useState("");
 
@@ -79,6 +86,7 @@ export function SelectionToolbar({ editor }: { editor: Editor }) {
   return (
     <BubbleMenu
       editor={editor}
+      appendTo={appendTo}
       options={{ placement: "top", offset: 8, onHide: () => setPanel("none") }}
       shouldShow={({ editor: e, state: s }) =>
         e.isEditable &&
