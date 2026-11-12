@@ -31,6 +31,8 @@ export interface Site {
   url: string;
   pages: number;
   publishedAt: string;
+  /** The site's look: a SiteTheme. A server from before themes leaves it out. */
+  theme?: string;
 }
 
 export interface SiteState {
@@ -256,9 +258,9 @@ export class Server {
   }
 
   /** Publishes the project's pages as the server has them now. */
-  publish(id: string, slug?: string): Promise<Site> {
+  publish(id: string, slug?: string, theme?: string): Promise<Site> {
     return this.call("POST", `/api/projects/${encodeURIComponent(id)}/site`, {
-      json: slug ? { slug } : {},
+      json: { ...(slug ? { slug } : {}), ...(theme ? { theme } : {}) },
     });
   }
 
