@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Write, present, teach</strong><br>
-  A Markdown editor with blocks, for notes, presentations and tutorials you publish as a site.
+  An academic editor for taking notes, building presentations and creating tutorials.
 </p>
 
 <p align="center">
@@ -25,12 +25,15 @@
   <img src="assets/readme/editor.png" alt="The editor with the pages of a project on the left and a page with properties, a callout and a to-do list on the right" width="800">
 </p>
 
-Cursive is an open-source Markdown editor, for macOS, Windows, Linux and the
-browser. You write in blocks with no Markdown syntax, and every page stays a
-Markdown file in a folder on your computer. A project is notes, a
-presentation or a tutorial. A free [Polemic](https://github.com/dwarsbit/polemic)
-account adds online services: sync between your computers, editing in the
-browser and publishing a project as a site.
+Cursive is an academic editor for taking notes, building presentations and
+creating tutorials, for macOS, Windows, Linux and the browser. It is made
+for students, researchers and teachers: notes for a course or a thesis,
+slides for a talk, and tutorials with quizzes and assignments for a class.
+You write in blocks, and every page stays a Markdown file in a folder on
+your computer. Cursive is open source and the companion of
+[Polemic](https://github.com/dwarsbit/polemic), the LaTeX editor. A free
+Polemic account adds online services: sync between your computers, editing
+in the browser and publishing a project as a site.
 
 Cursive is in early development. Version 0.1.0 is not released yet, so for
 now you run it from the source, as described under [Develop](#develop).
@@ -105,26 +108,34 @@ now you run it from the source, as described under [Develop](#develop).
 Sync carries the pages, the `.md` files. An empty folder stays on the
 computer it was made on.
 
-## Compared with Notion and Obsidian
+## Compared with Polemic, Notion and Obsidian
 
-| | Cursive | Notion | Obsidian |
-| --- | --- | --- | --- |
-| Runs on | Desktop and browser | Browser, desktop and mobile | Desktop and mobile |
-| Pages are Markdown files on your own machine | Yes | No | Yes |
-| Open source | Yes | No | No |
-| Block editor with a `/` menu | Yes | Yes | No |
-| Markdown source of every page | Yes | No | Yes |
-| Publish as a site | Yes, with an account | Yes | Yes, as a paid add-on |
-| Slides | Yes | No | Yes |
-| Quizzes and assignments | Yes | No | No |
-| Mobile app | No | Yes | Yes |
+| | Cursive | Polemic | Notion | Obsidian |
+| --- | --- | --- | --- | --- |
+| Made for | Notes, presentations and tutorials | Papers in LaTeX | Team workspaces | Personal notes |
+| Runs on | Desktop and browser | Desktop | Browser, desktop and mobile | Desktop and mobile |
+| Files on your own machine | Yes, Markdown | Yes, LaTeX | No | Yes, Markdown |
+| Open source | Yes | Yes | No | No |
+| Block editor with a `/` menu | Yes | No | Yes | No |
+| Source of every page | Yes, Markdown | Yes, LaTeX | No | Yes, Markdown |
+| PDF as the result | No | Yes | No | No |
+| Publish as a site | Yes, with an account | No | Yes | Yes, as a paid add-on |
+| Slides | Yes | With LaTeX packages | No | Yes |
+| Quizzes and assignments | Yes | No | No | No |
+| Mobile app | No | No | Yes | Yes |
 
+- **Compared with Polemic**: Polemic is for the paper itself: LaTeX, a
+  bibliography and a PDF that reviewers comment on. Cursive is for what
+  surrounds the paper: your notes, the talk and the course. Both keep
+  plain files on your machine and use the same account.
 - **Compared with Notion**: Notion keeps your pages in its own workspace
   online, with databases and teams. Cursive keeps each page as a Markdown
-  file in a folder you choose, and has no databases.
+  file in a folder you choose, and adds slides, quizzes and assignments. It
+  has no databases.
 - **Compared with Obsidian**: both work on a folder of Markdown files.
   Obsidian has links between notes, a graph and plugins. Cursive has a
-  block editor, slides with layouts, and quizzes and assignments.
+  block editor, slides with layouts, and quizzes and assignments with
+  grading.
 - **Switching to Cursive**: open any folder of Markdown files as a project.
   Cursive reads the front matter of each file as the page's properties.
 
