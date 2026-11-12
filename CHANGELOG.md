@@ -16,3 +16,8 @@
 - Open a project from your account in an empty folder on another computer.
 - Publish a project as a site with the Publish button: choose its address, publish again to bring it up to date, or unpublish it.
 - Open and edit your projects in a browser, at `/cursive` on the Polemic server. What you type is saved to your account as you type.
+- Add a quiz to a page from the `/` menu: a question, its options, which ones are correct, points, attempts and an explanation. In Markdown it is a `quiz` block with YAML inside.
+- Add an assignment to a page from the `/` menu: a title, instructions, points and a due date. In Markdown it is an `assignment` block with YAML inside.
+- Publish pages with quizzes or assignments as a tutorial: readers check their answers, see their points and mark pages as complete. Their progress is kept in their browser, and the correct answers stay on the server until a quiz is answered.
+- Let readers of a tutorial sign in with a Polemic account to keep their progress in their account and hand in assignments as text. This needs a paid plan on the author's side.
+- See who signed in to your tutorial from Publish → Learners: their completed pages, quiz points and handed-in work.

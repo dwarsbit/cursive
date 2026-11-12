@@ -1,3 +1,4 @@
+import type { AnyExtension } from "@tiptap/core";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import { DragHandle } from "@tiptap/extension-drag-handle-react";
 import { BlockMath, InlineMath } from "@tiptap/extension-mathematics";
@@ -9,14 +10,37 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { documentExtensions, lowlight } from "@/editor/extensions";
 import { createSlashController, Slash } from "@/editor/slash";
 import { tidyMarkdown } from "@/lib/page-file";
+import { AssignmentNode, QuizNode } from "@/tutorial/nodes";
 import { CodeBlockView } from "./CodeBlockView";
 import { MathPopover, type MathTarget } from "./MathPopover";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { SlashMenu } from "./SlashMenu";
+import { AssignmentView, QuizView } from "./TutorialViews";
 
 export interface EditorChange {
   markdown: string;
 }
+
+const QuizWithView = QuizNode.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(QuizView);
+  },
+});
+const AssignmentWithView = AssignmentNode.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(AssignmentView);
+  },
+});
+
+/** The document's blocks, with the tutorial blocks drawn as forms. */
+const withTutorialViews = (extensions: AnyExtension[]): AnyExtension[] =>
+  extensions.map((extension) =>
+    extension.name === "quiz"
+      ? QuizWithView
+      : extension.name === "assignment"
+        ? AssignmentWithView
+        : extension,
+  );
 
 /** The visual face of a page: blocks you edit in place. */
 export function Editor({
@@ -40,17 +64,19 @@ export function Editor({
   });
 
   const [extensions] = useState(() => [
-    ...documentExtensions({
-      codeBlock: CodeBlockLowlight.extend({
-        addNodeView() {
-          return ReactNodeViewRenderer(CodeBlockView);
-        },
-      }).configure({ lowlight }),
-      mathematics: BlockMath.configure({
-        katexOptions: { throwOnError: false, displayMode: true },
-        onClick: (_node, pos) => setMath({ pos, kind: "blockMath" }),
+    ...withTutorialViews(
+      documentExtensions({
+        codeBlock: CodeBlockLowlight.extend({
+          addNodeView() {
+            return ReactNodeViewRenderer(CodeBlockView);
+          },
+        }).configure({ lowlight }),
+        mathematics: BlockMath.configure({
+          katexOptions: { throwOnError: false, displayMode: true },
+          onClick: (_node, pos) => setMath({ pos, kind: "blockMath" }),
+        }),
       }),
-    }),
+    ),
     InlineMath.configure({
       katexOptions: { throwOnError: false },
       onClick: (_node, pos) => setMath({ pos, kind: "inlineMath" }),

@@ -9,6 +9,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { common, createLowlight } from "lowlight";
 import { Callout } from "./callout";
 import { Toggle, ToggleContent, ToggleSummary } from "./toggle";
+import { AssignmentNode, QuizNode } from "@/tutorial/nodes";
 
 export const lowlight = createLowlight(common);
 
@@ -37,6 +38,8 @@ export function documentExtensions(
     Toggle.configure({ persist: true, HTMLAttributes: { class: "toggle" } }),
     ToggleSummary,
     ToggleContent,
+    QuizNode,
+    AssignmentNode,
     Markdown,
   ];
 }
