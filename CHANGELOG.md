@@ -26,3 +26,5 @@
 - Publish pages with quizzes or assignments as a tutorial: readers check their answers, see their points and mark pages as complete. Their progress is kept in their browser, and the correct answers stay on the server until a quiz is answered.
 - Let readers of a tutorial sign in with a Polemic account to keep their progress in their account and hand in assignments as text. This needs a paid plan on the author's side.
 - See who signed in to your tutorial from Publish → Learners: their completed pages, quiz points and handed-in work.
+- Add more tutorial blocks from the `/` menu: learning goals, key terms, a video, before and after, fill in the blanks, put in order, an exercise with a hint and a model answer, and flashcards. In Markdown each is a block named after it (`goals`, `terms`, `video`, `compare`, `blanks`, `order`, `exercise`, `flashcards`) with YAML inside.
+- Give an assignment a rubric: criteria with points that add up to the assignment's points. Tick "Learners can add a file" to take a file next to the text.

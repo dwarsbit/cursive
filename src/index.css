@@ -1277,7 +1277,7 @@
   }
 }
 
-/* ---------- Tutorial blocks: quiz and assignment, each a framed form ---------- */
+/* ---------- Tutorial blocks, each a framed form ---------- */
 .doc .tutorial-block {
   margin: 10px 0;
   border-radius: 10px;
@@ -1455,6 +1455,78 @@
   margin: 0;
   font-size: 12px;
   color: var(--warning);
+}
+
+.doc .tb-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.doc .tb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.doc .tb-list-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.doc .tb-list-row .tb-input {
+  border-color: var(--border);
+}
+.doc .tb-grow {
+  flex: 1;
+}
+.doc .tb-term {
+  width: 32%;
+  font-weight: 500;
+}
+.doc .tb-index {
+  flex: none;
+  width: 18px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--muted-foreground);
+}
+.doc .tb-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.doc .tb-hint {
+  flex: 1;
+  min-width: 14em;
+  color: var(--muted-foreground);
+}
+.doc .tb-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.doc .tb-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.doc .tb-before .tb-label {
+  color: var(--destructive);
+}
+.doc .tb-after .tb-label {
+  color: var(--success);
+}
+.doc .tb-field input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--tint);
+}
+@media (max-width: 640px) {
+  .doc .tb-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ---------- Learners: who signed in to a published tutorial ---------- */

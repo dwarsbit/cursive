@@ -1,48 +1,68 @@
-import type { AnyExtension } from "@tiptap/core";
+import type { AnyExtension, Node as TiptapNode } from "@tiptap/core";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import { DragHandle } from "@tiptap/extension-drag-handle-react";
 import { BlockMath, InlineMath } from "@tiptap/extension-mathematics";
 import { Placeholder } from "@tiptap/extensions";
 import type { Node as ProseNode } from "@tiptap/pm/model";
 import type { Editor as TiptapEditor } from "@tiptap/core";
-import { EditorContent, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
+import {
+  EditorContent,
+  ReactNodeViewRenderer,
+  useEditor,
+  type ReactNodeViewProps,
+} from "@tiptap/react";
 import { GripVertical, Plus } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentExtensions, lowlight } from "@/editor/extensions";
 import { createSlashController, Slash } from "@/editor/slash";
 import { tidyMarkdown } from "@/lib/page-file";
-import { AssignmentNode, QuizNode } from "@/tutorial/nodes";
+import type { TutorialKind } from "@/tutorial/blocks";
 import { CodeBlockView } from "./CodeBlockView";
 import { MathPopover, type MathTarget } from "./MathPopover";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { SlashMenu } from "./SlashMenu";
+import {
+  BlanksView,
+  CompareView,
+  ExerciseView,
+  FlashcardsView,
+  GoalsView,
+  OrderView,
+  TermsView,
+  VideoView,
+} from "./TutorialBlockViews";
 import { AssignmentView, QuizView } from "./TutorialViews";
 
 export interface EditorChange {
   markdown: string;
 }
 
-const QuizWithView = QuizNode.extend({
-  addNodeView() {
-    return ReactNodeViewRenderer(QuizView);
-  },
-});
-const AssignmentWithView = AssignmentNode.extend({
-  addNodeView() {
-    return ReactNodeViewRenderer(AssignmentView);
-  },
-});
+const VIEWS: Record<TutorialKind, React.ComponentType<ReactNodeViewProps>> = {
+  quiz: QuizView,
+  assignment: AssignmentView,
+  goals: GoalsView,
+  terms: TermsView,
+  video: VideoView,
+  compare: CompareView,
+  blanks: BlanksView,
+  order: OrderView,
+  exercise: ExerciseView,
+  flashcards: FlashcardsView,
+};
 
 /** The document's blocks, with the tutorial blocks drawn as forms. */
 const withTutorialViews = (extensions: AnyExtension[]): AnyExtension[] =>
-  extensions.map((extension) =>
-    extension.name === "quiz"
-      ? QuizWithView
-      : extension.name === "assignment"
-        ? AssignmentWithView
-        : extension,
-  );
+  extensions.map((extension) => {
+    const view = VIEWS[extension.name as TutorialKind] as
+      React.ComponentType<ReactNodeViewProps> | undefined;
+    if (!view || extension.type !== "node") return extension;
+    return (extension as TiptapNode).extend({
+      addNodeView() {
+        return ReactNodeViewRenderer(view);
+      },
+    });
+  });
 
 /** The visual face of a page: blocks you edit in place. */
 export function Editor({

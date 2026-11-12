@@ -7,16 +7,17 @@ import {
   writeAssignment,
   writeQuiz,
   type Assignment,
+  type Criterion,
   type Quiz,
 } from "@/tutorial/blocks";
 
 /** A whole number from a field; empty or anything else is `fallback`. */
-const whole = (value: string, fallback: number) => {
+export const whole = (value: string, fallback: number) => {
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) && n >= 0 ? Math.min(n, 1000) : fallback;
 };
 
-function Frame({
+export function Frame({
   icon,
   kind,
   note,
@@ -50,7 +51,7 @@ function Frame({
   );
 }
 
-const points = (n: number) => (n === 1 ? "1 point" : `${n} points`);
+export const points = (n: number) => (n === 1 ? "1 point" : `${n} points`);
 
 /** A quiz as the author sees it: the question, its options and which are correct. */
 export function QuizView({ node, updateAttributes, selected }: ReactNodeViewProps) {
@@ -224,12 +225,38 @@ export function AssignmentView({
     updateAttributes({
       source: writeAssignment({ ...assignment, ...change }, source),
     });
+  const rubric = useRef<HTMLDivElement>(null);
+  const graded = assignment.rubric.length > 0;
+  const setRow = (index: number, change: Partial<Criterion>) =>
+    set({
+      rubric: assignment.rubric.map((row, i) =>
+        i === index ? { ...row, ...change } : row,
+      ),
+    });
+  const addRow = () => {
+    // The first criterion takes the points the assignment had.
+    set({
+      rubric: [
+        ...assignment.rubric,
+        { criterion: "", points: graded ? 1 : assignment.points },
+      ],
+    });
+    requestAnimationFrame(() => {
+      const inputs =
+        rubric.current?.querySelectorAll<HTMLInputElement>(".tb-criterion");
+      inputs?.[inputs.length - 1]?.focus();
+    });
+  };
 
   return (
     <Frame
       icon={<ClipboardList aria-hidden />}
       kind="Assignment"
-      note="Learners hand in their work as text"
+      note={
+        assignment.files
+          ? "Learners hand in text, a file or both"
+          : "Learners hand in their work as text"
+      }
       chip={assignment.points ? points(assignment.points) : "Not graded"}
       selected={selected}
     >
@@ -258,18 +285,78 @@ export function AssignmentView({
             onChange={(event) => set({ due: event.target.value })}
           />
         </label>
-        <span className="flex-1" />
         <label className="tb-field">
-          Points
           <input
-            type="number"
-            min={0}
-            max={1000}
-            className="tb-input tb-number"
-            value={assignment.points}
-            onChange={(event) => set({ points: whole(event.target.value, 0) })}
+            type="checkbox"
+            checked={assignment.files}
+            onChange={(event) => set({ files: event.target.checked })}
           />
+          Learners can add a file
         </label>
+        <span className="flex-1" />
+        {!graded && (
+          <label className="tb-field">
+            Points
+            <input
+              type="number"
+              min={0}
+              max={1000}
+              className="tb-input tb-number"
+              value={assignment.points}
+              onChange={(event) => set({ points: whole(event.target.value, 0) })}
+            />
+          </label>
+        )}
+      </div>
+      {graded && (
+        <div className="tb-list" ref={rubric}>
+          <span className="tb-label">Rubric</span>
+          {assignment.rubric.map((row, index) => (
+            <div key={index} className="tb-list-row">
+              <input
+                className="tb-input tb-grow tb-criterion"
+                value={row.criterion}
+                placeholder={`Criterion ${index + 1}`}
+                aria-label={`Criterion ${index + 1}`}
+                onChange={(event) => setRow(index, { criterion: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addRow();
+                  }
+                }}
+              />
+              <input
+                type="number"
+                min={0}
+                max={1000}
+                className="tb-input tb-number"
+                value={row.points}
+                aria-label={`Points for criterion ${index + 1}`}
+                onChange={(event) =>
+                  setRow(index, { points: whole(event.target.value, 0) })
+                }
+              />
+              <button
+                type="button"
+                className="tb-remove"
+                aria-label={`Remove criterion ${index + 1}`}
+                title="Remove criterion"
+                onClick={() =>
+                  set({ rubric: assignment.rubric.filter((_, i) => i !== index) })
+                }
+              >
+                <X aria-hidden />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="tb-row">
+        <button type="button" className="tb-button" onClick={addRow}>
+          <Plus aria-hidden />
+          {graded ? "Add criterion" : "Add a rubric"}
+        </button>
       </div>
     </Frame>
   );

@@ -14,10 +14,18 @@ describe("filterBlocks", () => {
       "To-do list",
       "Toggle",
       "Table",
+      "Key terms",
+      "Fill in the blanks",
       "Heading 1",
       "Callout",
       "Equation",
+      "Learning goals",
+      "Video",
+      "Before and after",
       "Quiz",
+      "Put in order",
+      "Exercise",
+      "Flashcards",
       "Assignment",
     ]);
   });
