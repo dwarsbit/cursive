@@ -1,10 +1,12 @@
 import type { ChainedCommands, Editor } from "@tiptap/core";
 import type { LucideIcon } from "lucide-react";
 import { newSource, type TutorialKind } from "@/tutorial/blocks";
+import { addTableCaption } from "./numbering";
 import {
   BookA,
   BookMarked,
   AtSign,
+  Captions,
   ChevronRight,
   CircleHelp,
   ClipboardList,
@@ -287,6 +289,17 @@ export const BLOCKS: BlockItem[] = [
     glyph: Table,
     turnInto: false,
     run: (chain) => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
+  },
+  {
+    id: "table-caption",
+    title: "Table caption",
+    description: "A numbered caption for the table next to it",
+    keywords: ["caption", "number", "label", "tbl"],
+    group: "More blocks",
+    glyph: Captions,
+    turnInto: false,
+    isActive: (editor) => editor.isActive("tableCaption"),
+    run: (chain) => chain.command(addTableCaption),
   },
   {
     id: "code",

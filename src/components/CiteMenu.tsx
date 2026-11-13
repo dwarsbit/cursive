@@ -3,6 +3,7 @@ import type { Editor, Range } from "@tiptap/core";
 import { BookMarked, Settings } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CiteController, CiteState } from "@/editor/cite";
+import { insertCrossRef, numberingOf, type Target } from "@/editor/numbering";
 import { entryPlain } from "@/references/styles";
 import { usePageReferences } from "@/references/context";
 import {
@@ -26,6 +27,7 @@ import { messageOf } from "./Dialog";
 
 type Option =
   | { kind: "page"; ref: Reference }
+  | { kind: "target"; target: Target }
   | { kind: "zotero"; item: ZoteroItem; source: ZoteroSource };
 
 /** Asks the app to open its settings at the references. */
@@ -39,6 +41,17 @@ function matches(ref: Reference, query: string): boolean {
     .join(" ")
     .toLowerCase()
     .split(/[\s,]+/)
+    .some((word) => word.startsWith(q));
+}
+
+function targetMatches(target: Target, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (target.id.startsWith(q)) return true;
+  return [target.label, target.kind === "eq" ? "" : target.caption]
+    .join(" ")
+    .toLowerCase()
+    .split(/[\s,.]+/)
     .some((word) => word.startsWith(q));
 }
 
@@ -163,13 +176,17 @@ export function CiteMenu({
     .filter((ref) => matches(ref, query))
     .slice(0, 5)
     .map((ref) => ({ kind: "page", ref }));
+  const targets: Option[] = [...numberingOf(editor.state).values()]
+    .filter((target) => targetMatches(target, query))
+    .slice(0, 5)
+    .map((target) => ({ kind: "target", target }));
   const pageItems = new Set(
     onPage.map((o) => (o.kind === "page" ? o.ref.zotero?.item : "")),
   );
   const fromZotero = (found?.options ?? []).filter(
     (o) => o.kind === "zotero" && !pageItems.has(o.item.key),
   );
-  const options = [...onPage, ...fromZotero];
+  const options = [...onPage, ...targets, ...fromZotero];
   const searching = hasSources && found?.query !== query;
   const index = Math.min(selected, Math.max(0, options.length - 1));
 
@@ -206,6 +223,10 @@ export function CiteMenu({
 
   const pick = (option: Option) => {
     controller.close();
+    if (option.kind === "target") {
+      insertCrossRef(editor, range, option.target.id);
+      return;
+    }
     if (option.kind === "page") {
       insertCitation(editor, range, option.ref, addElsewhere);
       return;
@@ -265,10 +286,17 @@ export function CiteMenu({
     new Set(fromZotero.map((o) => (o.kind === "zotero" ? o.source.id : ""))).size > 1;
   const row = (option: Option, at: number) => {
     const on = at === index;
-    const title = option.kind === "page" ? option.ref.title : (option.item.title ?? "");
+    const title =
+      option.kind === "page"
+        ? option.ref.title
+        : option.kind === "target"
+          ? [option.target.label, option.target.caption].filter(Boolean).join(". ")
+          : (option.item.title ?? "");
     const detail =
       option.kind === "page"
         ? `@${option.ref.key}`
+        : option.kind === "target"
+          ? `@${option.target.id}`
         : [
             (option.item.creators ?? [])
               .map((c) => c.lastName || c.name || "")
@@ -282,7 +310,13 @@ export function CiteMenu({
             .join(" · ");
     return (
       <button
-        key={option.kind === "page" ? `p:${option.ref.key}` : `z:${option.item.key}`}
+        key={
+          option.kind === "page"
+            ? `p:${option.ref.key}`
+            : option.kind === "target"
+              ? `t:${option.target.id}`
+              : `z:${option.item.key}`
+        }
         type="button"
         role="option"
         aria-selected={on}
@@ -318,12 +352,22 @@ export function CiteMenu({
             {onPage.map((option, at) => row(option, at))}
           </div>
         )}
+        {targets.length > 0 && (
+          <div role="group" aria-label="Figures, tables and equations">
+            <div className="px-2 pt-2 pb-1 text-2xs font-medium text-muted-foreground">
+              Figures, tables and equations
+            </div>
+            {targets.map((option, at) => row(option, onPage.length + at))}
+          </div>
+        )}
         {hasSources && (fromZotero.length > 0 || !searching) && (
           <div role="group" aria-label="Zotero">
             <div className="px-2 pt-2 pb-1 text-2xs font-medium text-muted-foreground">
               Zotero
             </div>
-            {fromZotero.map((option, at) => row(option, onPage.length + at))}
+            {fromZotero.map((option, at) =>
+              row(option, onPage.length + targets.length + at),
+            )}
             {!searching && fromZotero.length === 0 && (
               <p className="px-2 py-2 text-xs text-muted-foreground">
                 {problem ??

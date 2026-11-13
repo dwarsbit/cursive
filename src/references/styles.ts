@@ -293,7 +293,10 @@ const mla: CitationStyle = {
     if (link) part({ text: link });
     parts.forEach((runs, index) => {
       if (index > 0) out.text(", ");
-      for (const run of runs) (run.italic ? out.italic(run.text) : out.text(run.text));
+      for (const run of runs) {
+        if (run.italic) out.italic(run.text);
+        else out.text(run.text);
+      }
     });
     if (parts.length) out.text(".");
     return trimEnd(out.done());

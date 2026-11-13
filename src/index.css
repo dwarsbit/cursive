@@ -908,6 +908,58 @@
 .doc .katex-display {
   margin: 0;
 }
+/* A numbered equation: its number at the right. */
+.doc [data-type="block-math"][data-number] {
+  position: relative;
+  padding-inline: 3.5em;
+}
+.doc [data-type="block-math"][data-number]::after {
+  content: attr(data-number);
+  position: absolute;
+  right: 0.5em;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+
+/* Captions of numbered figures and tables, and references to them. */
+.doc .table-caption,
+.doc .figure-caption {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.doc .table-caption[data-number]::before {
+  content: attr(data-number) " ";
+  font-weight: 500;
+  color: var(--foreground);
+}
+.doc .table-caption.is-empty::after {
+  content: attr(data-placeholder);
+  opacity: 0.7;
+}
+.doc .figure-number {
+  font-weight: 500;
+  color: var(--foreground);
+}
+.doc .crossref {
+  border-radius: 4px;
+  padding: 0 1px;
+  color: var(--tint-foreground);
+  white-space: nowrap;
+}
+.doc .crossref::before {
+  content: attr(data-label);
+}
+.doc .crossref.ProseMirror-selectednode {
+  background: var(--tint-soft);
+}
+.doc .crossref-missing {
+  text-decoration: underline wavy var(--warning);
+  text-underline-offset: 3px;
+}
 
 .doc .ProseMirror-gapcursor::after {
   border-top-color: var(--foreground);
@@ -2350,6 +2402,25 @@
 .doc .image-alt:focus {
   outline: none;
   border-color: var(--ring);
+}
+.doc .image-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.doc .image-number {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+.doc .image-number input {
+  accent-color: var(--tint);
 }
 .doc .inline-image img {
   display: inline;

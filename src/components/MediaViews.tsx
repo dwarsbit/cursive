@@ -6,6 +6,8 @@ import {
 } from "@tiptap/react";
 import { File, FileArchive, FileImage, FileSpreadsheet, FileText, ImageOff } from "lucide-react";
 import { useState } from "react";
+import { useEditorState } from "@tiptap/react";
+import { newTargetId, numberingOf } from "@/editor/numbering";
 import { useFile, useWorkspace } from "@/lib/workspace";
 import { cn } from "@/lib/cn";
 import { PageLinkView } from "./PageLinks";
@@ -23,11 +25,17 @@ export function fileName(href: string): string {
 /**
  * An image on a line of its own. Selected in a page you edit, it shows
  * the field for its description: what the image shows, for readers
- * who can't see it.
+ * who can't see it. A numbered figure shows its description as the
+ * caption under it.
  */
 export function ImageView({ node, selected, editor, updateAttributes }: ReactNodeViewProps) {
   const src = node.attrs.src as string;
   const alt = node.attrs.alt as string;
+  const id = node.attrs.id as string;
+  const label = useEditorState({
+    editor,
+    selector: ({ editor: e }) => (id ? numberingOf(e.state).get(id)?.label : undefined),
+  });
   const { url } = useFile(src);
   const [broken, setBroken] = useState<string | null>(null);
   const failed = url === null || (url !== undefined && broken === url);
@@ -57,20 +65,48 @@ export function ImageView({ node, selected, editor, updateAttributes }: ReactNod
           onError={() => setBroken(url)}
         />
       )}
+      {label && !(editor.isEditable && selected) && (
+        <figcaption className="figure-caption">
+          <span className="figure-number">{label}.</span> {alt}
+        </figcaption>
+      )}
       {editor.isEditable && selected && (
-        <input
-          className="image-alt"
-          value={alt}
-          aria-label="Image description"
-          placeholder="A chart of the scores per week"
-          onChange={(event) => updateAttributes({ alt: event.target.value })}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === "Escape") {
-              event.preventDefault();
-              editor.commands.focus();
-            }
-          }}
-        />
+        <div className="image-fields">
+          <input
+            className="image-alt"
+            value={alt}
+            aria-label={id ? "Caption" : "Image description"}
+            placeholder={id ? "Scores per week" : "A chart of the scores per week"}
+            onChange={(event) => updateAttributes({ alt: event.target.value })}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === "Escape") {
+                event.preventDefault();
+                editor.commands.focus();
+              }
+            }}
+          />
+          <label
+            className="image-number"
+            title="Number this image as a figure, so the text can refer to it"
+          >
+            <input
+              type="checkbox"
+              checked={Boolean(id)}
+              onChange={(event) =>
+                updateAttributes({
+                  id: event.target.checked
+                    ? newTargetId(
+                        "fig",
+                        alt || fileName(src),
+                        numberingOf(editor.state).keys(),
+                      )
+                    : "",
+                })
+              }
+            />
+            {label ?? "Numbered figure"}
+          </label>
+        </div>
       )}
     </NodeViewWrapper>
   );
