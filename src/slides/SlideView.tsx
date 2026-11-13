@@ -1,5 +1,6 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import { memo, useEffect, useRef, useState } from "react";
+import { withReferenceViews } from "@/components/ReferenceViews";
 import { documentExtensions } from "@/editor/extensions";
 import type { Slide } from "./deck";
 import { SlideFrame } from "./SlideFrame";
@@ -19,7 +20,7 @@ export const SlideView = memo(function SlideView({
   className?: string;
   onOver?: (over: boolean) => void;
 }) {
-  const [extensions] = useState(() => documentExtensions());
+  const [extensions] = useState(() => withReferenceViews(documentExtensions()));
   const shown = useRef(body);
   const editor = useEditor({
     extensions,

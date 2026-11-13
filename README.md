@@ -59,6 +59,12 @@ now you run it from the source, as described under [Develop](#develop).
   listed as a tree in the sidebar in the order you drag them into. The front
   matter of a note shows under its title: text, lists such as tags, dates,
   numbers, checkboxes and links.
+- **References from Zotero**: type `@` to cite a work from the Zotero app on
+  your computer or your library at zotero.org. The page keeps its own copy of
+  each work, so it reads without Zotero, and shows a reference list in APA
+  style. When a work changes in Zotero, the page says so and you update it or
+  keep your copy. Citations are written `[@key]` and the works sit in a
+  `bibliography` block, as Pandoc and other Markdown tools read them.
 
 ### Present
 
@@ -129,6 +135,7 @@ computer it was made on.
 | Publish as a site            | Yes, with an account               | No                  | Yes                         | Yes, as a paid add-on |
 | Slides                       | Yes                                | With LaTeX packages | No                          | Yes                   |
 | Quizzes and assignments      | Yes                                | No                  | No                          | No                    |
+| Citations from Zotero        | Yes, in APA style                  | Yes, with BibTeX    | No                          | With plugins          |
 | Mobile app                   | No                                 | No                  | Yes                         | Yes                   |
 
 - **Compared with Polemic**: Polemic is for the paper itself: LaTeX, a
@@ -195,6 +202,8 @@ pnpm build:web    # the browser app, into dist-web
 
 - `src/editor`: the blocks and their Markdown form
 - `src/components`: the two editors, the sidebar and the dialogs
+- `src/references`: citations, the `bibliography` block, APA style and
+  Zotero (`zotero.ts`)
 - `src/lib`: a page as a Markdown file (`page-file.ts`), a project as a
   folder of pages (`project.ts`) and its stores for the desktop app, the
   demo and the server, and sync (`link-sync.ts`)

@@ -85,6 +85,26 @@ describe("Markdown round trip", () => {
       "```exercise\nid: e1\nprompt: Rewrite “Do you exercise regularly?”\nhint: What counts as regularly?\nanswer: In the past seven days, on how many days did you exercise?\n```",
     flashcards:
       "```flashcards\ncards:\n  - front: Recall period\n    back: The stretch of time a question asks about.\n```",
+    citation: "Attention is enough [@vaswani2017].",
+    "citation with pages and two works":
+      "As shown before [@vaswani2017, p. 4; @lee2020, pp. 2–3], it holds.",
+    bibliography: [
+      "```bibliography",
+      "- key: vaswani2017",
+      "  type: article",
+      "  author:",
+      "    - Vaswani, Ashish",
+      "    - Shazeer, Noam",
+      "  title: Attention is all you need",
+      '  year: "2017"',
+      "  container: Advances in Neural Information Processing Systems",
+      "  zotero:",
+      "    library: users/123456",
+      "    item: ABCD2345",
+      "    version: 1204",
+      "```",
+    ].join("\n"),
+    "empty bibliography": "```bibliography\n```",
   };
 
   for (const [name, markdown] of Object.entries(cases)) {
@@ -159,6 +179,33 @@ describe("Markdown round trip", () => {
     const markdown = "```quiz\n- only\n- a list\n```";
     expect(editorFor(markdown).getJSON().content?.[0].type).toBe("codeBlock");
     expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it("reads citations and the bibliography as their own nodes", () => {
+    const doc = editorFor(
+      [cases["citation with pages and two works"], cases.bibliography].join("\n\n"),
+    ).getJSON();
+    expect(doc.content?.map((node) => node.type)).toEqual([
+      "paragraph",
+      "bibliography",
+    ]);
+    const cite = doc.content?.[0].content?.find((node) => node.type === "citation");
+    expect(
+      (cite as { attrs?: Record<string, unknown> } | undefined)?.attrs?.items,
+    ).toEqual([
+      { key: "vaswani2017", locator: "p. 4" },
+      { key: "lee2020", locator: "pp. 2–3" },
+    ]);
+  });
+
+  it("keeps a link and a bracket that aren't citations as they are", () => {
+    for (const markdown of [
+      "Mail [@ana](mailto:ana@example.com).",
+      "An [@ not a key] here.",
+    ]) {
+      const doc = editorFor(markdown).getJSON();
+      expect(JSON.stringify(doc)).not.toContain('"citation"');
+    }
   });
 
   it("reads a quote that is not a callout as a quote", () => {

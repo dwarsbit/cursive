@@ -1910,3 +1910,177 @@
     visibility: visible;
   }
 }
+
+/* ---------- References ---------- */
+.confirm:has(.settings) {
+  width: min(32rem, calc(100vw - 2rem));
+}
+.doc .citation {
+  border-radius: 4px;
+  padding: 0 1px;
+  color: var(--tint-foreground);
+  cursor: default;
+  white-space: nowrap;
+}
+.doc .citation:hover,
+.doc .citation.is-selected {
+  background: var(--tint-soft);
+}
+.doc .citation-warn {
+  text-decoration: underline wavy var(--warning);
+  text-underline-offset: 3px;
+}
+.doc .citation-mark {
+  display: inline;
+  width: 12px;
+  height: 12px;
+  margin-left: 2px;
+  vertical-align: -1px;
+  color: var(--warning);
+}
+.doc .bibliography {
+  margin: 28px 0 10px;
+  border-radius: 8px;
+}
+.doc .bibliography.is-selected {
+  box-shadow: 0 0 0 2px var(--tint-edge);
+}
+.doc .bib-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.doc .bib-head h2 {
+  flex: 1;
+  margin: 0 0 8px;
+}
+.doc .bib-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.doc .bib-action:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.doc .bib-action svg {
+  width: 14px;
+  height: 14px;
+}
+.doc .bib-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.doc .bib-list li {
+  margin: 0 0 8px;
+}
+.doc .bib-entry {
+  margin: 0;
+  padding-left: 2em;
+  text-indent: -2em;
+  overflow-wrap: anywhere;
+}
+.doc .bib-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 2px 0 0 2em;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.doc .bib-note > svg {
+  width: 13px;
+  height: 13px;
+  color: var(--warning);
+}
+.doc .bib-note button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  color: var(--tint-foreground);
+}
+.doc .bib-note button:hover {
+  text-decoration: underline;
+}
+.doc .bib-note button svg {
+  width: 12px;
+  height: 12px;
+}
+.doc .bib-quiet {
+  opacity: 0;
+}
+.doc .bib-list li:hover .bib-quiet,
+.doc .bib-quiet:focus-within {
+  opacity: 1;
+}
+.doc .bib-empty,
+.doc .bib-problem {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.print-root .bibliography {
+  break-inside: auto;
+}
+.print-root .bib-list li {
+  break-inside: avoid;
+}
+.doc .citation {
+  position: relative;
+}
+.doc .cite-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 320px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.45;
+  white-space: normal;
+  color: var(--popover-foreground);
+  cursor: auto;
+}
+.doc .cite-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.doc .cite-note {
+  color: var(--warning);
+}
+.doc .cite-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+.doc .cite-field input {
+  flex: 1;
+  height: 26px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  padding: 0 8px;
+  font: inherit;
+  color: var(--foreground);
+  outline: none;
+}
+.doc .cite-field input:focus {
+  border-color: var(--tint-edge);
+}

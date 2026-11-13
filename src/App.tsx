@@ -1,4 +1,4 @@
-import { PanelLeft, Play } from "lucide-react";
+import { PanelLeft, Play, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Editor, type EditorChange } from "@/components/Editor";
@@ -6,7 +6,15 @@ import { MarkdownEditor } from "@/components/MarkdownEditor";
 import { PageProperties } from "@/components/PageProperties";
 import { clampWidth, Sidebar, type DropPlace } from "@/components/Sidebar";
 import { HEADER_BUTTON } from "@/components/Dialog";
+import { SettingsDialog } from "@/components/SettingsDialog";
 import { ExportDialog } from "@/export/ExportDialog";
+import { ReferencesProvider } from "@/references/context";
+import {
+  addToFence,
+  toBibliographyFence,
+  writeBibliography,
+  type Reference,
+} from "@/references/reference";
 import { cn } from "@/lib/cn";
 import { plainText, readPage, writePage, type Page } from "@/lib/page-file";
 import {
@@ -39,7 +47,14 @@ import {
   type TreeNode,
 } from "@/lib/project";
 import { dragWindow } from "@/lib/platform";
-import { isPresentation, NEW_PRESENTATION, readDeck, slideTitle } from "@/slides/deck";
+import {
+  emptySlide,
+  isPresentation,
+  NEW_PRESENTATION,
+  readDeck,
+  slideTitle,
+  writeDeck,
+} from "@/slides/deck";
 import { Presenter } from "@/slides/Presenter";
 import { SlideStage } from "@/slides/SlideStage";
 import { useDeck } from "@/slides/use-deck";
@@ -125,6 +140,7 @@ export default function App({
   const [problem, setProblem] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [settings, setSettings] = useState(false);
   // The slide a presentation opens at: the one picked in the sidebar.
   const [startSlide, setStartSlide] = useState(0);
   const [sidebarWidth, setSidebarWidth] = useState(() =>
@@ -306,6 +322,13 @@ export default function App({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, []);
 
+  // The citation menu asks for the settings when Zotero isn't set up.
+  useEffect(() => {
+    const show = () => setSettings(true);
+    window.addEventListener("cursive:settings", show);
+    return () => window.removeEventListener("cursive:settings", show);
+  }, []);
+
   const setFolderOpen = (path: string, isOpen: boolean) => {
     const next = new Set(closed);
     if (isOpen) next.delete(path);
@@ -437,6 +460,32 @@ export default function App({
   };
 
   const deck = useDeck(page, active, update, startSlide);
+  const isDeck = deck !== null;
+  const latestUpdate = useRef(update);
+  useEffect(() => {
+    latestUpdate.current = update;
+  });
+  /**
+   * A presentation keeps its references on one slide: a citation on
+   * another slide adds its work there, or to a new last slide.
+   */
+  const addElsewhere = useMemo(
+    () =>
+      isDeck
+        ? (ref: Reference) =>
+            latestUpdate.current((current) => {
+              const added = addToFence(current.markdown, ref);
+              if (added !== null) return { ...current, markdown: added };
+              const slides = readDeck(current.markdown);
+              const last = {
+                ...emptySlide(),
+                body: toBibliographyFence(writeBibliography([ref])),
+              };
+              return { ...current, markdown: writeDeck([...slides, last]) };
+            })
+        : undefined,
+    [isDeck],
+  );
   const title = page?.title.trim() ?? "";
   useEffect(() => {
     document.title = title ? `${title} · Cursive` : "Cursive";
@@ -465,7 +514,7 @@ export default function App({
     );
   }
 
-  return (
+  const shell = (
     <div
       className={cn("app", navOpen && "nav-open")}
       style={{ "--sidebar-width": `${sidebarWidth}px` } as React.CSSProperties}
@@ -582,6 +631,15 @@ export default function App({
               Export
             </button>
           )}
+          <button
+            type="button"
+            className="inline-flex size-6 flex-none items-center justify-center rounded-[5px] text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Settings"
+            title="Settings"
+            onClick={() => setSettings(true)}
+          >
+            <Settings className="size-3.5" aria-hidden />
+          </button>
           {actions}
         </header>
 
@@ -705,6 +763,18 @@ export default function App({
           }}
         />
       )}
+      {settings && <SettingsDialog onClose={() => setSettings(false)} />}
     </div>
+  );
+
+  return (
+    <ReferencesProvider
+      markdown={page?.markdown ?? ""}
+      page={active}
+      live
+      addElsewhere={addElsewhere}
+    >
+      {shell}
+    </ReferencesProvider>
   );
 }

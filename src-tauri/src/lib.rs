@@ -2,6 +2,7 @@ mod account;
 mod link;
 mod project;
 mod projects;
+mod zotero;
 
 /// Opens the system's print window for the app's window. An export
 /// puts its pages there, and the print window saves them as a PDF.
@@ -38,6 +39,10 @@ pub fn run() {
             link::link_load,
             link::link_save,
             link::link_remove,
+            zotero::zotero_local_fetch,
+            zotero::zotero_key_get,
+            zotero::zotero_key_set,
+            zotero::zotero_key_delete,
             print_window,
         ])
         .run(tauri::generate_context!())

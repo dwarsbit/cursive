@@ -9,6 +9,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { common, createLowlight } from "lowlight";
 import { Callout } from "./callout";
 import { Toggle, ToggleContent, ToggleSummary } from "./toggle";
+import { Bibliography, Citation } from "@/references/nodes";
 import { TUTORIAL_NODES } from "@/tutorial/nodes";
 
 export const lowlight = createLowlight(common);
@@ -39,6 +40,8 @@ export function documentExtensions(
     ToggleSummary,
     ToggleContent,
     ...TUTORIAL_NODES,
+    Citation,
+    Bibliography,
     Markdown,
   ];
 }
