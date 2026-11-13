@@ -8,6 +8,10 @@
 - See when a work changed or was deleted in Zotero, on its citation and in the reference list, and update it from Zotero or keep your copy.
 - Connect the Zotero app or a zotero.org library in Settings, with the gear in the header. In the desktop app the zotero.org key is kept in your system's credential store.
 - Published sites and PDF exports show citations and the reference list in APA style.
+- Add a footnote from the `/` menu, the selection toolbar or with Cmd/Ctrl + Alt + F, or type `^[a note]`. Write the note in the field under its number, with bold, italic, links and `@` citations.
+- See a page's footnotes numbered and listed under it. On a slide they sit at the bottom and are numbered per slide. Click a note in the list to change it.
+- Footnotes are kept in the Markdown where they are cited, as `^[The note.]`. Numbered notes (`[^1]`) written in other tools are read and become inline notes.
+- PDF exports and published sites list a page's footnotes at its end, and a slide's at its bottom.
 
 ## 0.1.0 (2026-11-12)
 

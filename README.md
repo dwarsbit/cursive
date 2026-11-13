@@ -65,6 +65,12 @@ now you run it from the source, as described under [Develop](#develop).
   style. When a work changes in Zotero, the page says so and you update it or
   keep your copy. Citations are written `[@key]` and the works sit in a
   `bibliography` block, as Pandoc and other Markdown tools read them.
+- **Footnotes**: add one from the `/` menu, the selection toolbar or with
+  Cmd/Ctrl + Alt + F, and write the note in the field under its number. A note
+  takes bold, italic, links and citations. The notes are numbered for you and
+  listed under the page, or at the bottom of a slide. A footnote is written
+  `^[The note.]` where it is cited, as Pandoc and Obsidian read it. Numbered
+  notes (`[^1]`) from other tools are read too.
 
 ### Present
 

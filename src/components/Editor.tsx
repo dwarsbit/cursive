@@ -17,6 +17,7 @@ import { GripVertical, Plus } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentExtensions, lowlight } from "@/editor/extensions";
+import { Footnote, inlineNumberedNotes } from "@/editor/footnote";
 import { Cite, createCiteController } from "@/editor/cite";
 import { createSlashController, Slash } from "@/editor/slash";
 import { tidyMarkdown } from "@/lib/page-file";
@@ -24,6 +25,8 @@ import { scrollNearEdge, startPointerDrag } from "@/lib/pointer-drag";
 import type { TutorialKind } from "@/tutorial/blocks";
 import { CiteMenu } from "./CiteMenu";
 import { CodeBlockView } from "./CodeBlockView";
+import { FootnotePopover } from "./FootnotePopover";
+import { Footnotes } from "./Footnotes";
 import { MathPopover, type MathTarget } from "./MathPopover";
 import { BibliographyView, CitationView } from "./ReferenceViews";
 import { SelectionToolbar } from "./SelectionToolbar";
@@ -150,6 +153,7 @@ export function Editor({
   inSlide?: boolean;
 }) {
   const [math, setMath] = useState<MathTarget | null>(null);
+  const [note, setNote] = useState<number | null>(null);
   const [controller] = useState(createSlashController);
   const slash = useSyncExternalStore(controller.subscribe, controller.getState);
   const [citer] = useState(createCiteController);
@@ -173,6 +177,7 @@ export function Editor({
           katexOptions: { throwOnError: false, displayMode: true },
           onClick: (_node, pos) => setMath({ pos, kind: "blockMath" }),
         }),
+        footnote: Footnote.configure({ onOpen: setNote }),
       }),
     ),
     InlineMath.configure({
@@ -195,7 +200,7 @@ export function Editor({
 
   const editor = useEditor({
     extensions,
-    content: markdown,
+    content: inlineNumberedNotes(markdown),
     contentType: "markdown",
     editorProps: {
       attributes: {
@@ -320,6 +325,14 @@ export function Editor({
           onClose={() => setMath(null)}
         />
       )}
+      {note !== null && (
+        <FootnotePopover
+          key={note}
+          editor={editor}
+          pos={note}
+          onClose={() => setNote(null)}
+        />
+      )}
     </>
   );
 
@@ -327,6 +340,7 @@ export function Editor({
     return (
       <>
         <EditorContent editor={editor} />
+        <Footnotes editor={editor} onOpen={setNote} />
         <SelectionToolbar editor={editor} appendTo={() => document.body} />
         {createPortal(menus, document.body)}
       </>
@@ -361,6 +375,7 @@ export function Editor({
         </span>
       </DragHandle>
       <EditorContent editor={editor} />
+      <Footnotes editor={editor} onOpen={setNote} />
       {dropLine &&
         createPortal(
           <div className="block-drop-line" style={dropLine} />,

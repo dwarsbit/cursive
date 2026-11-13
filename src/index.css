@@ -1059,12 +1059,17 @@
   transform: scale(var(--slide-scale, 1));
 }
 .slide-body {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-height: 0;
   overflow: clip;
 }
-.slide-body > div {
-  height: 100%;
+/* The blocks take the room the slide's footnotes leave. */
+.slide-body > div:first-child {
+  flex: 1;
+  min-height: 0;
+  overflow: clip;
 }
 .slide .doc {
   min-height: 100%;
@@ -2083,4 +2088,97 @@
 }
 .doc .cite-field input:focus {
   border-color: var(--tint-edge);
+}
+
+/* ---------- Footnotes ---------- */
+.doc {
+  counter-reset: footnote;
+}
+.doc .footnote {
+  counter-increment: footnote;
+  position: relative;
+  top: -0.5em;
+  padding: 0 1px;
+  border-radius: 3px;
+  font-size: 0.72em;
+  line-height: 0;
+  vertical-align: baseline;
+  font-variant-numeric: tabular-nums;
+  color: var(--tint-foreground);
+  cursor: default;
+}
+.doc .footnote::before {
+  content: counter(footnote);
+}
+.doc .footnote:hover,
+.doc .footnote.ProseMirror-selectednode {
+  background: var(--tint-soft);
+}
+.footnotes {
+  position: relative;
+  margin: 20px 0 0;
+  padding: 10px 0 0 1.7em;
+  list-style: decimal;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.footnotes::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 120px;
+  border-top: 1px solid var(--border);
+}
+.footnotes li {
+  margin: 2px 0;
+  padding-left: 2px;
+  overflow-wrap: anywhere;
+}
+.footnotes li::marker {
+  font-variant-numeric: tabular-nums;
+}
+.footnotes .footnote-open {
+  cursor: pointer;
+}
+.footnotes .footnote-open:hover {
+  color: var(--foreground);
+}
+.footnotes a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.footnotes code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+.footnotes .citation {
+  color: var(--tint-foreground);
+}
+.slide .footnotes {
+  flex: none;
+  margin: 8px 0 0;
+  padding-top: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.slide .footnotes li {
+  margin: 0;
+}
+.print-root .footnotes li {
+  break-inside: avoid;
+}
+/* The field a footnote is written in. */
+.doc.footnote-field {
+  min-height: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.doc.footnote-field:focus {
+  border-color: var(--ring);
 }

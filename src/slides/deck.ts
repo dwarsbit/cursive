@@ -1,4 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
+import { withoutFootnotes } from "@/editor/footnote";
 
 /**
  * A presentation is a page whose front matter says `type: presentation`.
@@ -201,7 +202,7 @@ export function slideTitle(slide: Slide): string {
   }
   const text = lines.filter((line, index) => !fenced.has(index) && line.trim() !== "");
   const heading = text.find((line) => /^ {0,3}#{1,6}\s/.test(line));
-  return (heading ?? text[0] ?? "")
+  return withoutFootnotes(heading ?? text[0] ?? "")
     .replace(/^\s*(?:>\s?)*(?:#{1,6}|[-*+]|\d+\.)?\s*(?:\[[ xX]\]\s+)?/, "")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/\*+|~~|==|`+|\b_+|_+\b/g, "")

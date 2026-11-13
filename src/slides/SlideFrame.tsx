@@ -57,7 +57,8 @@ export function SlideFrame({
       cancelAnimationFrame(frameId);
       frameId = requestAnimationFrame(() => {
         const doc = element.querySelector(".doc");
-        const next = doc ? doc.scrollHeight > element.clientHeight + 1 : false;
+        const room = doc?.parentElement?.clientHeight ?? element.clientHeight;
+        const next = doc ? doc.scrollHeight > room + 1 : false;
         setOver(next);
         report.current?.(next);
       });

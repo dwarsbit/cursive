@@ -108,6 +108,9 @@ describe("a presentation's file", () => {
   it("names a slide after its heading, or its first words", () => {
     expect(slideTitle(readDeck("Kicker\n\n## The **point**")[0])).toBe("The point");
     expect(slideTitle(readDeck("- [x] First thing")[0])).toBe("First thing");
+    expect(slideTitle(readDeck("## Timing^[In minutes.] per item")[0])).toBe(
+      "Timing per item",
+    );
     expect(slideTitle(readDeck("```r\nx\n```")[0])).toBe("");
   });
 
