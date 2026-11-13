@@ -27,12 +27,12 @@ function writeLabel(text: string): string {
 const readLabel = (text: string) => text.replace(/\\([[\]\\])/g, "$1");
 
 const IMAGE_LINE =
-  /^ {0,3}!\[((?:\\.|\[[^\]\n]*\]|[^\\[\]\n])*)\]\(\s*(<[^>\n]*>|[^\s)]+)(?:\s+"([^"\n]*)")?\s*\)[ \t]*(?=\n[ \t]*\n|\n?$)\n?/;
+  /^ {0,3}!\[((?:\\.|\[[^\]\n]*\]|[^\\[\]\n])*)\]\(\s*(<[^>\n]*>|[^\s)]+)(?:\s+"([^"\n]*)")?\s*\)(?:\{#(fig-[\w-]*\w)\})?[ \t]*(?=\n[ \t]*\n|\n?$)\n?/;
 
 /** The image on a line of its own at the start of `src`. */
 export function matchImageLine(
   src: string,
-): { raw: string; src: string; alt: string; title: string } | null {
+): { raw: string; src: string; alt: string; title: string; id: string } | null {
   const found = IMAGE_LINE.exec(src);
   if (!found) return null;
   return {
@@ -40,6 +40,7 @@ export function matchImageLine(
     src: found[2].replace(/^<|>$/g, ""),
     alt: readLabel(found[1]),
     title: found[3] ?? "",
+    id: found[4] ?? "",
   };
 }
 
@@ -47,7 +48,9 @@ function imageMarkdown(attrs: Record<string, unknown> | undefined): string {
   const src = writeHref((attrs?.src as string | undefined) ?? "");
   const alt = writeLabel((attrs?.alt as string | undefined) ?? "");
   const title = ((attrs?.title as string | undefined) ?? "").replace(/"/g, "'");
-  return title ? `![${alt}](${src} "${title}")` : `![${alt}](${src})`;
+  const image = title ? `![${alt}](${src} "${title}")` : `![${alt}](${src})`;
+  const id = (attrs?.id as string | undefined) ?? "";
+  return id ? `${image}{#${id}}` : image;
 }
 
 const imageAttributes = () => ({
@@ -56,7 +59,11 @@ const imageAttributes = () => ({
   title: { default: "" },
 });
 
-/** An image on a line of its own: a block of the page. */
+/**
+ * An image on a line of its own: a block of the page. With an id,
+ * `![Scores per week](scores.png){#fig-scores}`, it is a numbered
+ * figure and its description is the caption under it.
+ */
 export const Image = Node.create({
   name: "image",
   group: "block",
@@ -64,7 +71,7 @@ export const Image = Node.create({
   selectable: true,
   draggable: false,
 
-  addAttributes: imageAttributes,
+  addAttributes: () => ({ ...imageAttributes(), id: { default: "" } }),
 
   parseHTML() {
     return [{ tag: "figure[data-image] img[src]" }, { tag: "img[src]" }];
@@ -83,7 +90,14 @@ export const Image = Node.create({
     tokenize(src) {
       const found = matchImageLine(src);
       return found
-        ? { type: "imageBlock", raw: found.raw, src: found.src, alt: found.alt, title: found.title }
+        ? {
+            type: "imageBlock",
+            raw: found.raw,
+            src: found.src,
+            alt: found.alt,
+            title: found.title,
+            id: found.id,
+          }
         : undefined;
     },
   },
@@ -93,6 +107,7 @@ export const Image = Node.create({
       src: token.src as string,
       alt: token.alt as string,
       title: token.title as string,
+      id: (token.id as string | undefined) ?? "",
     });
   },
 

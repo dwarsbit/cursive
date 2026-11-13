@@ -154,3 +154,14 @@ export function propertyKey(label: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+/** Sets a text property in front matter, or takes it out with null. */
+export function setTextProperty(raw: string, key: string, value: string | null): string {
+  const properties = parseProperties(raw);
+  const at = properties.findIndex((property) => property.kind !== "raw" && property.key === key);
+  const next: Property | null = value === null ? null : { kind: "text", key, value };
+  if (at < 0) return next ? formatProperties([...properties, next]) : raw;
+  return formatProperties(
+    properties.flatMap((property, index) => (index === at ? (next ? [next] : []) : [property])),
+  );
+}

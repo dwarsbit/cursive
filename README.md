@@ -59,12 +59,18 @@ now you run it from the source, as described under [Develop](#develop).
   listed as a tree in the sidebar in the order you drag them into. The front
   matter of a note shows under its title: text, lists such as tags, dates,
   numbers, checkboxes and links.
-- **References from Zotero**: type `@` to cite a work from the Zotero app on
-  your computer or your library at zotero.org. The page keeps its own copy of
-  each work, so it reads without Zotero, and shows a reference list in APA
-  style. When a work changes in Zotero, the page says so and you update it or
-  keep your copy. Citations are written `[@key]` and the works sit in a
-  `bibliography` block, as Pandoc and other Markdown tools read them.
+- **References**: type `@` to cite a work from the Zotero app on your
+  computer, your library or group libraries at zotero.org, a BibTeX file, or
+  by its DOI or ISBN. The page keeps its own copy of each work, so it reads
+  without Zotero, and shows a reference list in APA, Chicago, Harvard, IEEE,
+  MLA or Vancouver style. When a work changes in Zotero, the page says so and
+  you update it or keep your copy. Citations are written `[@key]` and the
+  works sit in a `bibliography` block, as Pandoc and other Markdown tools
+  read them.
+- **Numbered figures, tables and equations**: give an image, a table or an
+  equation a number and a caption, and refer to it with `@` as "Figure 2".
+  The ids are written as Quarto writes them, `{#fig-scores}`, and the
+  numbers count themselves.
 - **Footnotes**: add one from the `/` menu, the selection toolbar or with
   Cmd/Ctrl + Alt + F, and write the note in the field under its number. A note
   takes bold, italic, links and citations. The notes are numbered for you and
@@ -153,7 +159,7 @@ stays on the computer it was made on.
 | Publish as a site            | Yes, with an account               | No                  | Yes                         | Yes, as a paid add-on |
 | Slides                       | Yes                                | With LaTeX packages | No                          | Yes                   |
 | Quizzes and assignments      | Yes                                | No                  | No                          | No                    |
-| Citations from Zotero        | Yes, in APA style                  | Yes, with BibTeX    | No                          | With plugins          |
+| Citations                    | Zotero and BibTeX, six styles      | Yes, with BibTeX    | No                          | With plugins          |
 | Links and backlinks          | Yes                                | Within a paper      | Yes                         | Yes                   |
 | Mobile app                   | No                                 | No                  | Yes                         | Yes                   |
 
@@ -221,8 +227,11 @@ pnpm build:web    # the browser app, into dist-web
 
 - `src/editor`: the blocks and their Markdown form
 - `src/components`: the two editors, the sidebar and the dialogs
-- `src/references`: citations, the `bibliography` block, APA style and
-  Zotero (`zotero.ts`)
+- `src/references`: citations, the `bibliography` block, the citation
+  styles (`apa.ts`, `styles.ts`), Zotero (`zotero.ts`), BibTeX files
+  (`bibtex.ts`) and DOI and ISBN lookup (`lookup.ts`)
+- `src/editor/numbering.ts`: numbered figures, tables and equations and
+  references to them
 - `src/lib`: a page as a Markdown file (`page-file.ts`), a project as a
   folder of pages (`project.ts`) and its stores for the desktop app, the
   demo and the server, and sync (`link-sync.ts`)

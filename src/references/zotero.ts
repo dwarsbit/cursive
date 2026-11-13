@@ -51,9 +51,16 @@ export interface ZoteroItem {
   extra?: string;
 }
 
-/** A place to search: the Zotero app or a library at zotero.org. */
+/** A group library the user is a member of, searched when it is on. */
+export interface ZoteroGroup {
+  id: string;
+  name: string;
+  enabled: boolean;
+}
+
+/** A place to search: the Zotero app or a library at zotero.org, with the groups picked in Settings. */
 export type ZoteroSource =
-  | { id: string; kind: "app"; enabled: boolean }
+  | { id: string; kind: "app"; enabled: boolean; groups?: ZoteroGroup[] }
   | {
       id: string;
       kind: "cloud";
@@ -61,11 +68,42 @@ export type ZoteroSource =
       label: string;
       userId: string;
       apiKey: string;
+      groups?: ZoteroGroup[];
     };
 
-/** The library a source's items are in, as a reference keeps it. */
+/** One library of a source: the user's own or a group's. */
+export interface ZoteroLibrary {
+  source: ZoteroSource;
+  /** Where the API has it: `users/123`, `users/0` in the app, `groups/456`. */
+  path: string;
+  /** The library a reference copied from it keeps: `local`, `users/123` or `groups/456`. */
+  id: string;
+  /** The group's name; empty for the user's own library. */
+  group: string;
+}
+
+/** The library a source's own items are in, as a reference keeps it. */
 export const libraryOf = (source: ZoteroSource): string =>
   source.kind === "app" ? "local" : `users/${source.userId}`;
+
+/** The libraries a source searches: the user's own, then the groups that are on. */
+export function librariesOf(source: ZoteroSource): ZoteroLibrary[] {
+  const own: ZoteroLibrary = {
+    source,
+    path: source.kind === "app" ? "users/0" : `users/${encodeURIComponent(source.userId)}`,
+    id: libraryOf(source),
+    group: "",
+  };
+  const groups = (source.groups ?? [])
+    .filter((group) => group.enabled && /^\d+$/.test(group.id))
+    .map((group) => ({
+      source,
+      path: `groups/${group.id}`,
+      id: `groups/${group.id}`,
+      group: group.name,
+    }));
+  return [own, ...groups];
+}
 
 const TYPES: Record<string, ReferenceType> = {
   journalArticle: "article",
@@ -180,17 +218,14 @@ async function webGet(
 ): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
-  const response = await fetch(
-    `${WEB}/users/${encodeURIComponent(source.userId)}/${path}?${query}`,
-    {
-      signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-        "Zotero-API-Key": source.apiKey,
-        "Zotero-API-Version": "3",
-      },
+  const response = await fetch(`${WEB}/${path}?${query}`, {
+    signal: controller.signal,
+    headers: {
+      Accept: "application/json",
+      "Zotero-API-Key": source.apiKey,
+      "Zotero-API-Version": "3",
     },
-  )
+  })
     .catch(() => null)
     .finally(() => clearTimeout(timer));
   if (!response) throw new Error("zotero.org didn't answer. Check your connection.");
@@ -201,19 +236,17 @@ async function webGet(
   return (await response.json()) as unknown;
 }
 
-function get(
-  source: ZoteroSource,
-  path: string,
-  query: URLSearchParams,
-): Promise<unknown> {
+/** One GET of a library's items: `path` is what follows the library, like `items/top`. */
+function get(library: ZoteroLibrary, path: string, query: URLSearchParams): Promise<unknown> {
+  const { source } = library;
   return source.kind === "app"
-    ? localGet(`users/0/${path}`, query)
-    : webGet(source, path, query);
+    ? localGet(`${library.path}/${path}`, query)
+    : webGet(source, `${library.path}/${path}`, query);
 }
 
 /** Items whose title, creators or year match what was typed. */
 export async function searchZotero(
-  source: ZoteroSource,
+  library: ZoteroLibrary,
   text: string,
   limit = 12,
 ): Promise<ZoteroItem[]> {
@@ -224,12 +257,12 @@ export async function searchZotero(
   });
   if (!text.trim()) query.delete("q");
   query.set("sort", "dateModified");
-  return toItems(await get(source, "items/top", query));
+  return toItems(await get(library, "items/top", query));
 }
 
 /** The items with these keys, as Zotero has them now. Missing keys are deleted items. */
 export async function fetchZoteroItems(
-  source: ZoteroSource,
+  library: ZoteroLibrary,
   keys: string[],
 ): Promise<ZoteroItem[]> {
   const items: ZoteroItem[] = [];
@@ -239,9 +272,29 @@ export async function fetchZoteroItems(
       itemKey: keys.slice(at, at + 50).join(","),
       includeTrashed: "0",
     });
-    items.push(...toItems(await get(source, "items", query)));
+    items.push(...toItems(await get(library, "items", query)));
   }
   return items;
+}
+
+/** The group libraries the source's user is a member of. */
+export async function listZoteroGroups(
+  source: ZoteroSource,
+): Promise<Array<{ id: string; name: string }>> {
+  const query = new URLSearchParams({ format: "json", limit: "100" });
+  const payload =
+    source.kind === "app"
+      ? await localGet("users/0/groups", query)
+      : await webGet(source, `users/${encodeURIComponent(source.userId)}/groups`, query);
+  if (!Array.isArray(payload)) return [];
+  return payload
+    .map((entry) => {
+      const group = entry as { id?: number; data?: { id?: number; name?: string } } | null;
+      const id = group?.id ?? group?.data?.id;
+      return id === undefined ? null : { id: String(id), name: group?.data?.name ?? "" };
+    })
+    .filter((group): group is { id: string; name: string } => group !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Whether the Zotero app answers on this computer. */

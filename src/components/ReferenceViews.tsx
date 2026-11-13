@@ -6,13 +6,8 @@ import {
 } from "@tiptap/react";
 import { RefreshCw, TriangleAlert, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import {
-  citationText,
-  entryText,
-  referenceEntry,
-  sortReferences,
-  type Run,
-} from "@/references/apa";
+import type { Run } from "@/references/apa";
+import { entryPlain, listOrder, STYLES } from "@/references/styles";
 import { usePageReferences, type ReferenceState } from "@/references/context";
 import {
   readBibliography,
@@ -37,7 +32,7 @@ export function stateText(state: ReferenceState | undefined, missing = false): s
 }
 
 /**
- * A citation in the text, in APA style, marked when its work needs a
+ * A citation in the text, in the page's style, marked when its work needs a
  * look. Clicking it opens the pages it cites, to fill in or change.
  */
 export function CitationView({
@@ -46,7 +41,7 @@ export function CitationView({
   editor,
   updateAttributes,
 }: ReactNodeViewProps) {
-  const { refs, states } = usePageReferences();
+  const { refs, states, style, numbers } = usePageReferences();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLSpanElement>(null);
   const items = node.attrs.items as CiteItem[];
@@ -56,7 +51,7 @@ export function CitationView({
     .map((item) => {
       const ref = refs.get(item.key);
       const note = stateText(states.get(item.key), !ref);
-      return [ref ? entryText(ref) : `@${item.key}`, note].filter(Boolean).join("\n");
+      return [ref ? entryPlain(style, ref) : `@${item.key}`, note].filter(Boolean).join("\n");
     })
     .join("\n\n");
 
@@ -93,7 +88,7 @@ export function CitationView({
         if (editor.isEditable) setOpen(true);
       }}
     >
-      {citationText(items, refs)}
+      {style.citation(items, refs, numbers)}
       {warn && <TriangleAlert className="citation-mark" aria-label="Needs a look" />}
       {open && (
         <span
@@ -107,7 +102,7 @@ export function CitationView({
             return (
               <span key={`${item.key}:${index}`} className="cite-row">
                 <span className="cite-work">
-                  {ref ? entryText(ref) : `@${item.key}`}
+                  {ref ? entryPlain(style, ref) : `@${item.key}`}
                 </span>
                 {stateText(states.get(item.key), !ref) && (
                   <span className="cite-note">
@@ -136,7 +131,7 @@ export function CitationView({
 }
 
 /**
- * The reference list: every work the page keeps, in APA style. Where
+ * The reference list: every work the page keeps, in the page's style. Where
  * the page is edited, a work that changed in Zotero can be brought up
  * to date or kept as it is, and a work no citation names any more can
  * be removed.
@@ -147,7 +142,8 @@ export function BibliographyView({
   editor,
   selected,
 }: ReactNodeViewProps) {
-  const { states, cited, checking, problem, check } = usePageReferences();
+  const { states, cited, checking, problem, check, style, numbers, setStyle } =
+    usePageReferences();
   const editable = editor.isEditable;
   const source = node.attrs.source as string;
   const refs = readBibliography(source) ?? [];
@@ -164,6 +160,21 @@ export function BibliographyView({
     >
       <div className="bib-head">
         <h2>References</h2>
+        {editable && setStyle ? (
+          <select
+            className="bib-style"
+            aria-label="Citation style"
+            title="Citation style"
+            value={style.id}
+            onChange={(event) => setStyle(event.target.value)}
+          >
+            {STYLES.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
         {editable && linked && (
           <button
             type="button"
@@ -185,14 +196,21 @@ export function BibliographyView({
             : ""}
         </p>
       ) : (
-        <ol className="bib-list">
-          {sortReferences(refs).map((ref) => {
+        <ol className={cn("bib-list", style.numeric && "bib-numbered")}>
+          {listOrder(style, refs, numbers).map((ref) => {
             const state = editable ? states.get(ref.key) : undefined;
             const unused = editable && !cited.has(ref.key);
             return (
               <li key={ref.key} className={cn(state && "bib-warn")}>
                 <p className="bib-entry">
-                  <Runs runs={referenceEntry(ref)} />
+                  {style.numeric && (
+                    <span className="bib-number">
+                      {style.id === "ieee"
+                        ? `[${numbers.get(ref.key) ?? ""}]`
+                        : `${numbers.get(ref.key) ?? ""}.`}
+                    </span>
+                  )}
+                  <Runs runs={style.entry(ref)} />
                 </p>
                 {state && (
                   <div className="bib-note" role="status">

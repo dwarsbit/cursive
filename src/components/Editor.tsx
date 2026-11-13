@@ -1,7 +1,7 @@
 import type { AnyExtension, Node as TiptapNode } from "@tiptap/core";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import { DragHandle } from "@tiptap/extension-drag-handle-react";
-import { BlockMath, InlineMath } from "@tiptap/extension-mathematics";
+import { InlineMath } from "@tiptap/extension-mathematics";
 import { Placeholder } from "@tiptap/extensions";
 import type { Node as ProseNode } from "@tiptap/pm/model";
 import { NodeSelection, Selection, TextSelection } from "@tiptap/pm/state";
@@ -17,6 +17,7 @@ import { GripVertical, Plus } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentExtensions, lowlight } from "@/editor/extensions";
+import { Equation } from "@/editor/numbering";
 import { Footnote, inlineNumberedNotes } from "@/editor/footnote";
 import { Cite, createCiteController } from "@/editor/cite";
 import { Find, findTargetFor } from "@/editor/find";
@@ -213,21 +214,22 @@ export function Editor({
             return ReactNodeViewRenderer(CodeBlockView);
           },
         }).configure({ lowlight }),
-        mathematics: BlockMath.configure({
+        mathematics: Equation.configure({
           katexOptions: { throwOnError: false, displayMode: true },
           onClick: (_node, pos) => setMath({ pos, kind: "blockMath" }),
+        }),
+        inlineMath: InlineMath.configure({
+          katexOptions: { throwOnError: false },
+          onClick: (_node, pos) => setMath({ pos, kind: "inlineMath" }),
         }),
         footnote: Footnote.configure({ onOpen: setNote }),
       }),
     )),
-    InlineMath.configure({
-      katexOptions: { throwOnError: false },
-      onClick: (_node, pos) => setMath({ pos, kind: "inlineMath" }),
-    }),
     Placeholder.configure({
       placeholder: ({ node }) => {
         if (node.type.name === "heading") return `Heading ${node.attrs.level}`;
         if (node.type.name === "detailsSummary") return "Toggle";
+        if (node.type.name === "tableCaption") return "Caption";
         if (node.type.name === "paragraph") return "Type / for commands";
         return "";
       },

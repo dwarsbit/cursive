@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { citedKeys, pageReferences, sameContent, type Reference } from "./reference";
+import { numberWorks, styleById, type CitationStyle } from "./styles";
 import { activeSources } from "./sources";
 import {
   fetchZoteroItems,
-  libraryOf,
+  librariesOf,
   zoteroReference,
   type ZoteroItem,
 } from "./zotero";
@@ -15,8 +16,14 @@ export type ReferenceState =
 export interface PageReferences {
   /** The page's references, by key. */
   refs: Map<string, Reference>;
-  /** The keys the page cites. */
+  /** The keys the page cites, in the order it first cites them. */
   cited: Set<string>;
+  /** The page's citation style. */
+  style: CitationStyle;
+  /** Each work's number, for a numbered style. */
+  numbers: Map<string, number>;
+  /** Gives the page another style; missing where the page can't change. */
+  setStyle?: (id: string) => void;
   /** References whose item changed or went away in Zotero, by key. */
   states: Map<string, ReferenceState>;
   checking: boolean;
@@ -35,6 +42,8 @@ export interface PageReferences {
 const NONE: PageReferences = {
   refs: new Map(),
   cited: new Set(),
+  style: styleById("apa"),
+  numbers: new Map(),
   states: new Map(),
   checking: false,
   problem: null,
@@ -45,10 +54,12 @@ const Context = createContext<PageReferences>(NONE);
 
 export const usePageReferences = () => useContext(Context);
 
-/** Whether a source may hold an item copied from `library`. */
-function mayHold(sourceLibrary: string, library: string): boolean {
-  // The Zotero app is the user's own library, which zotero.org holds too.
-  return sourceLibrary === library || sourceLibrary === "local" || library === "local";
+/** Whether a library may hold an item copied from `library`. */
+export function mayHold(sourceLibrary: string, library: string): boolean {
+  if (sourceLibrary === library) return true;
+  // The Zotero app's own library is the user's, which zotero.org holds too.
+  const own = (id: string) => id === "local" || id.startsWith("users/");
+  return (sourceLibrary === "local" || library === "local") && own(sourceLibrary) && own(library);
 }
 
 /** Asks the enabled sources for the items the references came from. */
@@ -64,20 +75,19 @@ export async function checkReferences(
   // Keys a source of the reference's own library answered for.
   const asked = new Set<string>();
   let failure: unknown = null;
-  for (const source of sources) {
-    const library = libraryOf(source);
+  for (const library of sources.flatMap(librariesOf)) {
     const wanted = linked.filter(
-      (ref) => !found.has(ref.key) && mayHold(library, ref.zotero!.library),
+      (ref) => !found.has(ref.key) && mayHold(library.id, ref.zotero!.library),
     );
     if (!wanted.length) continue;
     try {
-      const items = await fetchZoteroItems(source, [
+      const items = await fetchZoteroItems(library, [
         ...new Set(wanted.map((ref) => ref.zotero!.item)),
       ]);
       for (const ref of wanted) {
         const item = items.find((candidate) => candidate.key === ref.zotero!.item);
         if (item) found.set(ref.key, item);
-        if (library === ref.zotero!.library) asked.add(ref.key);
+        if (library.id === ref.zotero!.library) asked.add(ref.key);
       }
     } catch (error) {
       failure = error;
@@ -104,12 +114,17 @@ export async function checkReferences(
  */
 export function ReferencesProvider({
   markdown,
+  style: styleName,
+  setStyle,
   page,
   live = false,
   addElsewhere,
   children,
 }: {
   markdown: string;
+  /** The style the page's front matter names, `csl: ieee`. */
+  style?: string;
+  setStyle?: (id: string) => void;
   /** Names the open page: another page is checked afresh. */
   page?: string | null;
   /** Ask Zotero: only where the page is edited. */
@@ -120,6 +135,8 @@ export function ReferencesProvider({
   const list = useMemo(() => pageReferences(markdown), [markdown]);
   const refs = useMemo(() => new Map(list.map((ref) => [ref.key, ref])), [list]);
   const cited = useMemo(() => citedKeys(markdown), [markdown]);
+  const style = useMemo(() => styleById(styleName), [styleName]);
+  const numbers = useMemo(() => numberWorks(cited, list), [cited, list]);
   const [states, setStates] = useState<Map<string, ReferenceState>>(new Map());
   const [checking, setChecking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -170,13 +187,16 @@ export function ReferencesProvider({
     () => ({
       refs,
       cited,
+      style,
+      numbers,
+      setStyle,
       states,
       checking,
       problem,
       check: () => setAsks((n) => n + 1),
       addElsewhere,
     }),
-    [refs, cited, states, checking, problem, addElsewhere],
+    [refs, cited, style, numbers, setStyle, states, checking, problem, addElsewhere],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

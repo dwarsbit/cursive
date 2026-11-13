@@ -1,6 +1,7 @@
 import { computePosition, flip, offset, shift } from "@floating-ui/dom";
 import type { Editor } from "@tiptap/core";
 import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import { newTargetId, numberingOf } from "@/editor/numbering";
 
 export interface MathTarget {
   pos: number;
@@ -49,6 +50,24 @@ export function MathPopover({
       cancelAnimationFrame(second);
     };
   }, []);
+
+  const [id, setId] = useState((node?.attrs.id as string | undefined) ?? "");
+
+  /** Numbers the equation, or takes its number away. */
+  const number = (on: boolean) => {
+    const next = on ? newTargetId("eq", "", numberingOf(editor.state).keys()) : "";
+    setId(next);
+    editor
+      .chain()
+      .command(({ tr }) => {
+        const current = tr.doc.nodeAt(target.pos);
+        if (current?.type.name !== "blockMath") return false;
+        tr.setNodeMarkup(target.pos, undefined, { ...current.attrs, id: next });
+        return true;
+      })
+      .run();
+    field.current?.focus();
+  };
 
   const update = (value: string) => {
     setLatex(value);
@@ -129,6 +148,20 @@ export function MathPopover({
       <p className="px-1 pt-1.5 text-2xs text-muted-foreground">
         Written in TeX. Enter to finish, Shift + Enter for a new line.
       </p>
+      {target.kind === "blockMath" && (
+        <label
+          className="flex items-center gap-1.5 px-1 pt-1.5 text-xs text-muted-foreground"
+          title="Number this equation, so the text can refer to it"
+        >
+          <input
+            type="checkbox"
+            className="accent-[var(--tint)]"
+            checked={Boolean(id)}
+            onChange={(event) => number(event.target.checked)}
+          />
+          Numbered equation
+        </label>
+      )}
     </div>
   );
 }

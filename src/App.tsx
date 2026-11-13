@@ -13,6 +13,8 @@ import { HistoryDialog } from "@/components/HistoryDialog";
 import type { PageSnapshot } from "@/lib/page-history";
 import { ExportDialog } from "@/export/ExportDialog";
 import { ReferencesProvider } from "@/references/context";
+import { STYLE_KEY, styleOfProperties } from "@/references/styles";
+import { setTextProperty } from "@/lib/properties";
 import {
   addToFence,
   toBibliographyFence,
@@ -344,6 +346,13 @@ export default function App({
     for (const [file, text] of writes) void persist(store.writePage(file, text));
     return next;
   };
+
+  /** Gives the open page another citation style: APA, the default, needs no line. */
+  const setStyle = (id: string) =>
+    update((current) => ({
+      ...current,
+      properties: setTextProperty(current.properties, STYLE_KEY, id === "apa" ? null : id),
+    }));
 
   /** Puts the open page back as a snapshot has it; the page as it is now is kept first. */
   const restoreSnapshot = async (snapshot: PageSnapshot) => {
@@ -1024,6 +1033,8 @@ export default function App({
     <WorkspaceProvider value={workspace}>
       <ReferencesProvider
         markdown={page?.markdown ?? ""}
+        style={page ? styleOfProperties(page.properties).id : undefined}
+        setStyle={setStyle}
         page={active}
         live
         addElsewhere={addElsewhere}

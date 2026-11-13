@@ -1,3 +1,4 @@
+import { styleOfProperties } from "@/references/styles";
 import { inlineNumberedNotes } from "@/editor/footnote";
 import { readPage } from "@/lib/page-file";
 import { buildTree, pageLabel, type Project, type TreeNode } from "@/lib/project";
@@ -14,8 +15,8 @@ export interface ExportOptions {
 
 /** One page of the project as it goes into the PDF. */
 export type Part =
-  | { kind: "page"; path: string; title: string; markdown: string }
-  | { kind: "slides"; path: string; title: string; slides: Slide[] };
+  | { kind: "page"; path: string; title: string; markdown: string; style: string }
+  | { kind: "slides"; path: string; title: string; slides: Slide[]; style: string };
 
 /** A line of the contents list on the first sheet of a project. */
 export interface ContentsLine {
@@ -43,14 +44,16 @@ export interface ExportJob {
 function part(path: string, source: string): Part {
   const page = readPage(source);
   const title = pageLabel(path, source);
+  const style = styleOfProperties(page.properties).id;
   return isPresentation(page)
     ? {
         kind: "slides",
         path,
         title,
         slides: readDeck(inlineNumberedNotes(page.markdown)),
+        style,
       }
-    : { kind: "page", path, title, markdown: page.markdown };
+    : { kind: "page", path, title, markdown: page.markdown, style };
 }
 
 /** The pages of a tree in the order the sidebar lists them. */

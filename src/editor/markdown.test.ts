@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
-import { Editor } from "@tiptap/core";
+import { Editor, type JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 import { documentExtensions } from "./extensions";
-import { readPage } from "@/lib/page-file";
+import { addTableCaption, newTargetId, numberingOf } from "./numbering";
+import { readPage, tidyMarkdown } from "@/lib/page-file";
 import { SAMPLE_PAGE, SAMPLE_PROJECT } from "./sample";
 
 function editorFor(markdown: string) {
@@ -13,7 +14,8 @@ function editorFor(markdown: string) {
   });
 }
 
-const roundTrip = (markdown: string) => editorFor(markdown).getMarkdown().trim();
+// As the app saves a page: no runs of blank lines.
+const roundTrip = (markdown: string) => tidyMarkdown(editorFor(markdown).getMarkdown()).trim();
 
 describe("Markdown round trip", () => {
   const cases: Record<string, string> = {
@@ -120,6 +122,16 @@ describe("Markdown round trip", () => {
     "two images": "![One](a.png)\n\n![Two](b.png)",
     "image from the web": "![A map](https://example.com/map.png)",
     "attached file": "Read [Interview guide.pdf](attachments/Interview%20guide.pdf) first.",
+    "numbered figure": "![Scores per week](attachments/scores.png){#fig-scores}",
+    "table with a caption": [
+      "| Week | Step            |",
+      "| ---- | --------------- |",
+      "| 46   | Print 50 copies |",
+      "",
+      ": Steps of the *pilot* {#tbl-steps}",
+    ].join("\n"),
+    "numbered equation": "$$\nE = mc^2\n$$ {#eq-energy}",
+    "cross-references": "As @fig-scores and @tbl-steps show, see @eq-energy.",
     "link to another page's file": "See [the pilot](Pilot%20study.md).",
   };
 
@@ -141,6 +153,62 @@ describe("Markdown round trip", () => {
     ]);
     expect(doc.content?.[0].attrs?.kind).toBe("note");
     expect(doc.content?.[1].attrs?.open).toBe(true);
+  });
+
+  it("numbers figures, tables and equations, and refers to them", () => {
+    const editor = editorFor(
+      [
+        "See @fig-b, @tbl-x and @eq-a; @fig-gone is not here.",
+        "![First](a.png){#fig-a}",
+        "![Second](b.png){#fig-b}",
+        "![Not numbered](c.png)",
+        "| A |\n| - |\n| 1 |",
+        ": Results {#tbl-x}",
+        "$$\nx = 1\n$$ {#eq-a}",
+      ].join("\n\n"),
+    );
+    const doc = editor.getJSON();
+    expect(doc.content?.map((node) => node.type)).toEqual([
+      "paragraph",
+      "image",
+      "image",
+      "image",
+      "table",
+      "tableCaption",
+      "blockMath",
+    ]);
+    expect(
+      (doc.content?.[0].content as JSONContent[])
+        .filter((n) => n.type === "crossRef")
+        .map((n) => n.attrs?.target),
+    ).toEqual(["fig-b", "tbl-x", "eq-a", "fig-gone"]);
+    const targets = numberingOf(editor.state);
+    expect([...targets.values()].map((t) => `${t.id} ${t.label} ${t.caption}`)).toEqual([
+      "fig-a Figure 1 First",
+      "fig-b Figure 2 Second",
+      "tbl-x Table 1 Results",
+      "eq-a Equation 1 x = 1",
+    ]);
+    const labels = [...editor.view.dom.querySelectorAll(".crossref")].map((el) =>
+      el.getAttribute("data-label"),
+    );
+    expect(labels).toEqual(["Figure 2", "Table 1", "Equation 1", "@fig-gone"]);
+  });
+
+  it("makes ids for new figures, tables and equations", () => {
+    expect(newTargetId("fig", "Scores per week.png", [])).toBe("fig-scores-week");
+    expect(newTargetId("fig", "Scores", ["fig-scores"])).toBe("fig-scores-2");
+    expect(newTargetId("eq", "", ["eq-1"])).toBe("eq-2");
+  });
+
+  it("captions the table next to the caret", () => {
+    const editor = editorFor("| Week | Step |\n| - | - |\n| 46 | Print |\n\nx");
+    const last = editor.state.doc.content.size - 1;
+    editor.chain().setTextSelection(last).command(({ tr }) => {
+      tr.delete(last - 1, last);
+      return true;
+    }).command(addTableCaption).insertContent("Steps").run();
+    expect(editor.getMarkdown().trim().split("\n").pop()).toBe(": Steps {#tbl-week-step}");
   });
 
   it("reads images, files and page links as their own nodes", () => {

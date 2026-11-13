@@ -34,6 +34,7 @@ const EXPECTED: Record<string, string> = {
   quote: "blockquote",
   callout: "callout",
   table: "table",
+  "table-caption": "tableCaption",
   code: "codeBlock",
   equation: "blockMath",
   divider: "horizontalRule",

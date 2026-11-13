@@ -262,7 +262,7 @@ export interface CiteItem {
 }
 
 const KEY = /^[\p{L}\p{N}_][\p{L}\p{N}_:.#$%&+?<>~/-]*$/u;
-const isKey = (key: string) => KEY.test(key) && !/[.:#$%&+?<>~/-]$/.test(key);
+export const isKey = (key: string) => KEY.test(key) && !/[.:#$%&+?<>~/-]$/.test(key);
 
 /** The citation at the start of `src`: `[@key]`, `[@a, p. 4; @b]`. */
 export function matchCitation(src: string): { raw: string; items: CiteItem[] } | null {

@@ -14,6 +14,7 @@ import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { openExternal } from "@/lib/platform";
 import { ORDER_KEY } from "@/lib/project";
+import { STYLE_KEY } from "@/references/styles";
 import {
   formatProperties,
   normalizeLink,
@@ -250,7 +251,9 @@ export function PageProperties({
     return { ...property, kind: wanted };
   });
   const shown = properties.filter(
-    (property) => property.kind !== "raw" && property.key !== ORDER_KEY,
+    // The order is the sidebar's, the citation style the reference list's.
+    (property) =>
+      property.kind !== "raw" && property.key !== ORDER_KEY && property.key !== STYLE_KEY,
   );
 
   const replace = (target: Property, next: Property | null) =>

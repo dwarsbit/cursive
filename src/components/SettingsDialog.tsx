@@ -1,10 +1,30 @@
-import { Boxes, Cloud, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
+import {
+  Boxes,
+  Cloud,
+  FileText,
+  Loader2,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Users,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isDesktop } from "@/lib/desktop-store";
 import { cn } from "@/lib/cn";
-import { removeSource, saveSource, sourceName, useSources } from "@/references/sources";
+import {
+  keepBibText,
+  readBibFile,
+  removeSource,
+  saveSource,
+  sourceName,
+  useSources,
+  type BibSource,
+} from "@/references/sources";
 import {
   checkZoteroKey,
+  listZoteroGroups,
   zoteroAppAnswers,
   type ZoteroSource,
 } from "@/references/zotero";
@@ -66,7 +86,11 @@ const ICON =
  * says whether its connection works.
  */
 function ZoteroSources() {
-  const sources = useSources();
+  const all = useSources();
+  const sources = useMemo(
+    () => all.filter((source): source is ZoteroSource => source.kind !== "bibtex"),
+    [all],
+  );
   const [statuses, setStatuses] = useState<Record<string, Status>>({});
   const [editing, setEditing] = useState<ZoteroSource | "new" | null>(null);
   const [adding, setAdding] = useState(false);
@@ -83,6 +107,36 @@ function ZoteroSources() {
     }, 0);
     return () => clearTimeout(timer);
   }, [sources, check]);
+
+  const [groupsOf, setGroupsOf] = useState<{ id: string; busy: boolean; note?: string } | null>(
+    null,
+  );
+  /** Asks Zotero which groups the user is in and lists them under the source, off at first. */
+  const findGroups = async (source: ZoteroSource) => {
+    setGroupsOf({ id: source.id, busy: true });
+    try {
+      const found = await listZoteroGroups(source);
+      const known = new Map((source.groups ?? []).map((group) => [group.id, group]));
+      await saveSource({
+        ...source,
+        groups: found.map((group) => ({
+          ...group,
+          enabled: known.get(group.id)?.enabled ?? false,
+        })),
+      });
+      setGroupsOf({
+        id: source.id,
+        busy: false,
+        note: found.length ? undefined : "You are in no group libraries.",
+      });
+    } catch (error) {
+      setGroupsOf({
+        id: source.id,
+        busy: false,
+        note: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
 
   const hasApp = sources.some((source) => source.kind === "app");
 
@@ -102,7 +156,8 @@ function ZoteroSources() {
               : "off";
             const Icon = source.kind === "app" ? Boxes : Cloud;
             return (
-              <li key={source.id} className="flex items-center gap-2.5 py-2">
+              <li key={source.id}>
+                <div className="flex items-center gap-2.5 py-2">
                 <span className="grid size-7 flex-none place-items-center rounded-md bg-accent">
                   <Icon className="size-3.5" aria-hidden />
                 </span>
@@ -127,6 +182,16 @@ function ZoteroSources() {
                     className={cn(status === "checking" && "animate-spin")}
                     aria-hidden
                   />
+                </button>
+                <button
+                  type="button"
+                  className={ICON}
+                  title="Find the group libraries you are in"
+                  aria-label="Find group libraries"
+                  disabled={!source.enabled || (groupsOf?.id === source.id && groupsOf.busy)}
+                  onClick={() => void findGroups(source)}
+                >
+                  <Users aria-hidden />
                 </button>
                 {source.kind === "cloud" && (
                   <button
@@ -158,6 +223,41 @@ function ZoteroSources() {
                     void saveSource({ ...source, enabled: event.target.checked })
                   }
                 />
+                </div>
+                {groupsOf?.id === source.id && groupsOf.note && (
+                  <p className="pb-2 pl-[38px] text-xs text-muted-foreground">
+                    {groupsOf.note}
+                  </p>
+                )}
+                {(source.groups ?? []).length > 0 && (
+                  <ul className="pb-2 pl-[38px]" aria-label="Group libraries">
+                    {(source.groups ?? []).map((group) => (
+                      <li key={group.id} className="flex h-7 items-center gap-2 text-[13px]">
+                        <Users className="size-3.5 text-muted-foreground" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate">
+                          {group.name || `Group ${group.id}`}
+                        </span>
+                        <input
+                          type="checkbox"
+                          className="size-3.5 accent-[var(--tint)]"
+                          checked={group.enabled}
+                          title="Search this group library when citing"
+                          aria-label={`Search ${group.name || `group ${group.id}`} when citing`}
+                          onChange={(event) =>
+                            void saveSource({
+                              ...source,
+                              groups: (source.groups ?? []).map((other) =>
+                                other.id === group.id
+                                  ? { ...other, enabled: event.target.checked }
+                                  : other,
+                              ),
+                            })
+                          }
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             );
           })}
@@ -366,6 +466,169 @@ function ZoteroCloudForm({
   );
 }
 
+const fileNameOf = (path: string) => path.split(/[\\/]/).pop() || path;
+
+/**
+ * BibTeX files to cite from. The desktop app reads a file from its
+ * place on each search, so a file a reference manager keeps exporting
+ * stays current; a browser keeps a copy, read again with Replace.
+ */
+function BibFiles() {
+  const all = useSources();
+  const files = useMemo(
+    () => all.filter((source): source is BibSource => source.kind === "bibtex"),
+    [all],
+  );
+  const [counts, setCounts] = useState<Record<string, string>>({});
+  const [problem, setProblem] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const replacing = useRef<BibSource | null>(null);
+
+  const count = useCallback(async (file: BibSource) => {
+    try {
+      const refs = await readBibFile(file);
+      setCounts((prev) => ({
+        ...prev,
+        [file.id]: refs.length === 1 ? "1 work" : `${refs.length} works`,
+      }));
+    } catch (error) {
+      setCounts((prev) => ({
+        ...prev,
+        [file.id]: error instanceof Error ? error.message : String(error),
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      for (const file of files) void count(file);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [files, count]);
+
+  const add = async () => {
+    setProblem(null);
+    if (isDesktop) {
+      const picked = await open({
+        title: "Add a BibTeX file",
+        filters: [{ name: "BibTeX", extensions: ["bib"] }],
+      });
+      if (typeof picked !== "string") return;
+      await saveSource({
+        id: crypto.randomUUID(),
+        kind: "bibtex",
+        enabled: true,
+        name: fileNameOf(picked),
+        path: picked,
+      });
+      return;
+    }
+    replacing.current = null;
+    input.current?.click();
+  };
+
+  const takeFile = async (picked: File | undefined) => {
+    if (!picked) return;
+    const file: BibSource = replacing.current ?? {
+      id: crypto.randomUUID(),
+      kind: "bibtex",
+      enabled: true,
+      name: picked.name,
+    };
+    try {
+      keepBibText(file.id, await picked.text());
+      await saveSource({ ...file, name: picked.name });
+      void count(file);
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  return (
+    <section className="mt-5">
+      <h3 className="text-[13px] font-medium">BibTeX files</h3>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        Type @ in a page to cite a work from these files by its key, as LaTeX and
+        Pandoc do.
+        {isDesktop
+          ? " Each file is read again when you search, so an export that keeps itself up to date stays current."
+          : " This browser keeps a copy of each file. Replace it when the file changes."}
+      </p>
+      {files.length > 0 && (
+        <ul className="mt-2 divide-y border-y">
+          {files.map((file) => (
+            <li key={file.id} className="flex items-center gap-2.5 py-2">
+              <span className="grid size-7 flex-none place-items-center rounded-md bg-accent">
+                <FileText className="size-3.5" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium">{sourceName(file)}</p>
+                <p className="truncate text-xs text-muted-foreground" title={file.path}>
+                  {!file.enabled
+                    ? "Off"
+                    : [counts[file.id] ?? "Reading…", file.path].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              <button
+                type="button"
+                className={ICON}
+                title={isDesktop ? "Read the file again" : "Replace with a newer copy of the file"}
+                aria-label={isDesktop ? "Read the file again" : "Replace the file"}
+                onClick={() => {
+                  if (isDesktop) {
+                    void count(file);
+                  } else {
+                    replacing.current = file;
+                    input.current?.click();
+                  }
+                }}
+              >
+                <RefreshCw aria-hidden />
+              </button>
+              <button
+                type="button"
+                className={ICON}
+                title="Remove"
+                aria-label="Remove"
+                onClick={() => void removeSource(file.id)}
+              >
+                <Trash2 aria-hidden />
+              </button>
+              <input
+                type="checkbox"
+                className="size-3.5 accent-[var(--tint)]"
+                checked={file.enabled}
+                title="Search this file when citing"
+                aria-label={`Search ${sourceName(file)} when citing`}
+                onChange={(event) => void saveSource({ ...file, enabled: event.target.checked })}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+      {problem && <p className="mt-2 text-xs text-destructive">{problem}</p>}
+      <button
+        type="button"
+        className={cn(BUTTON, "mt-3 inline-flex items-center gap-1.5")}
+        onClick={() => void add()}
+      >
+        <Plus className="size-3.5" aria-hidden />
+        Add BibTeX file
+      </button>
+      <input
+        ref={input}
+        type="file"
+        accept=".bib,application/x-bibtex,text/x-bibtex"
+        className="hidden"
+        onChange={(event) => {
+          void takeFile(event.target.files?.[0]);
+          event.target.value = "";
+        }}
+      />
+    </section>
+  );
+}
+
 /** The app's settings. Today: where citations come from. */
 export function SettingsDialog({ onClose }: { onClose: () => void }) {
   return (
@@ -373,8 +636,10 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
       <div className="settings mt-3">
         <h2 className="mb-2 text-xs font-medium text-muted-foreground">References</h2>
         <ZoteroSources />
+        <BibFiles />
         <p className="mt-4 text-xs text-muted-foreground">
-          Citations and the reference list are in APA style.
+          Type a DOI or an ISBN after @ to look a work up. Each page picks its citation
+          style in its reference list.
         </p>
       </div>
       <div className="mt-4 flex justify-end">

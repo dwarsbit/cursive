@@ -3,9 +3,9 @@ import { useEditorState } from "@tiptap/react";
 import katex from "katex";
 import { useMemo, type ReactNode } from "react";
 import { writeFootnote } from "@/editor/footnote";
-import { citationText } from "@/references/apa";
+import { numberingOf } from "@/editor/numbering";
 import { usePageReferences } from "@/references/context";
-import type { CiteItem, Reference } from "@/references/reference";
+import type { CiteItem } from "@/references/reference";
 
 const WRAP: Record<string, (children: ReactNode, key: number) => ReactNode> = {
   bold: (children, key) => <strong key={key}>{children}</strong>,
@@ -17,12 +17,25 @@ const WRAP: Record<string, (children: ReactNode, key: number) => ReactNode> = {
 };
 
 /** A note's inline content as the page shows it. */
-function inline(nodes: JSONContent[], refs: Map<string, Reference>): ReactNode[] {
+function inline(
+  nodes: JSONContent[],
+  cite: (items: CiteItem[]) => string,
+  label: (target: string) => string | undefined,
+): ReactNode[] {
   return nodes.map((node, key) => {
+    if (node.type === "crossRef") {
+      const target = String(node.attrs?.target ?? "");
+      const text = label(target);
+      return (
+        <span key={key} className={text ? "crossref" : "crossref crossref-missing"}>
+          {text ?? `@${target}`}
+        </span>
+      );
+    }
     if (node.type === "citation") {
       return (
         <span key={key} className="citation">
-          {citationText((node.attrs?.items as CiteItem[] | undefined) ?? [], refs)}
+          {cite((node.attrs?.items as CiteItem[] | undefined) ?? [])}
         </span>
       );
     }
@@ -36,7 +49,7 @@ function inline(nodes: JSONContent[], refs: Map<string, Reference>): ReactNode[]
       return writeFootnote(String(node.attrs?.text ?? ""));
     }
     if (node.type !== "text") {
-      return node.content ? inline(node.content, refs) : " ";
+      return node.content ? inline(node.content, cite, label) : " ";
     }
     let out: ReactNode = node.text ?? "";
     for (const mark of node.marks ?? []) {
@@ -61,7 +74,7 @@ function inline(nodes: JSONContent[], refs: Map<string, Reference>): ReactNode[]
 
 /** A footnote's text, read as inline Markdown. */
 export function NoteText({ editor, text }: { editor: Editor; text: string }) {
-  const { refs } = usePageReferences();
+  const { refs, style, numbers } = usePageReferences();
   const content = useMemo(() => {
     try {
       return (editor.markdown?.parse(text).content ?? []).flatMap(
@@ -71,7 +84,12 @@ export function NoteText({ editor, text }: { editor: Editor; text: string }) {
       return [{ type: "text", text }];
     }
   }, [editor, text]);
-  return inline(content, refs);
+  const targets = useEditorState({ editor, selector: ({ editor: e }) => numberingOf(e.state) });
+  return inline(
+    content,
+    (items) => style.citation(items, refs, numbers),
+    (target) => targets.get(target)?.label,
+  );
 }
 
 interface Note {
