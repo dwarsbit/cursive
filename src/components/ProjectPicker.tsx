@@ -6,10 +6,12 @@ import { cn } from "@/lib/cn";
 import { writePage } from "@/lib/page-file";
 import { dragWindow, formatOpened } from "@/lib/platform";
 import { NEW_PRESENTATION } from "@/slides/deck";
+import { type Template, templatePages } from "@/templates";
 import { newSource } from "@/tutorial/blocks";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { BUTTON, Dialog, messageOf, PRIMARY_BUTTON } from "./Dialog";
 import { Mark } from "./Mark";
+import { TemplateDialog } from "./TemplateDialog";
 
 interface Recent {
   name: string;
@@ -72,6 +74,7 @@ export function ProjectPicker({
   const [renaming, setRenaming] = useState<Recent | null>(null);
   const [newName, setNewName] = useState("");
   const [deleting, setDeleting] = useState<Recent | null>(null);
+  const [templates, setTemplates] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
 
   const refresh = () =>
@@ -112,6 +115,20 @@ export function ProjectPicker({
       }).catch(fail);
       const { path, file } = STARTS.find((item) => item.id === start)!.page();
       await invoke("project_write_page", { dir, path, source: file }).catch(fail);
+      await onOpen(dir);
+    });
+
+  /** A project with the template's pages, named as typed or after the template. */
+  const createFrom = (template: Template) =>
+    run(async () => {
+      const typed = name.trim();
+      const dir = await invoke<string>("projects_create", {
+        name: typed || template.name,
+        unique: typed === "",
+      }).catch(fail);
+      for (const [path, source] of Object.entries(templatePages(template.id))) {
+        await invoke("project_write_page", { dir, path, source }).catch(fail);
+      }
       await onOpen(dir);
     });
 
@@ -199,12 +216,23 @@ export function ProjectPicker({
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          className={cn(BUTTON, "mt-2 w-full")}
+          disabled={busy}
+          onClick={() => {
+            setProblem(null);
+            setTemplates(true);
+          }}
+        >
+          Start from a template…
+        </button>
         {root && (
           <p className="mt-2 truncate text-xs text-muted-foreground" title={root}>
             New projects are folders in {root}.
           </p>
         )}
-        {problem && !renaming && (
+        {problem && !renaming && !templates && (
           <p className="mt-2 text-xs text-destructive" role="alert">
             {problem}
           </p>
@@ -335,6 +363,14 @@ export function ProjectPicker({
             </div>
           </form>
         </Dialog>
+      )}
+      {templates && (
+        <TemplateDialog
+          busy={busy}
+          problem={problem}
+          onPick={(template) => void createFrom(template)}
+          onClose={() => setTemplates(false)}
+        />
       )}
       {deleting && (
         <ConfirmDialog

@@ -55,6 +55,10 @@ now you run it from the source, as described under [Develop](#develop).
   Markdown, so a page opens in any other Markdown tool. Callouts are quotes
   that open with `[!note]`, toggles are `<details>` elements and equations
   are TeX between `$$`.
+- **Templates**: start a project from a template for lecture notes, a lab
+  report, a literature review, a research paper, a thesis outline, reading
+  notes, a conference talk, lecture slides, a thesis defense or a course
+  module.
 - **Notes and properties**: a project is notes and presentations in folders,
   listed as a tree in the sidebar in the order you drag them into. The front
   matter of a note shows under its title: text, lists such as tags, dates,
