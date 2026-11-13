@@ -239,6 +239,7 @@ export function HistoryDialog({
               (whole
                 ? snapshot.source.split("\n").map((text, index) => (
                     <div key={index} className="diff-line">
+                      <span className="diff-sign" aria-hidden />
                       {text || " "}
                     </div>
                   ))

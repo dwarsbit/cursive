@@ -301,7 +301,11 @@ export function Editor({
     const pick = (event: Event) => {
       if (!editor.view.hasFocus() || !workspaceRef.current.canAddFiles) return;
       fileKind.current = (event as CustomEvent<"image" | "file">).detail;
+      // Where the caret is once the slash menu took its text away.
       filesAt.current = editor.state.selection.from;
+      queueMicrotask(() => {
+        filesAt.current = editor.state.selection.from;
+      });
       const input = fileInput.current;
       if (!input) return;
       input.accept = fileKind.current === "image" ? "image/*" : "";

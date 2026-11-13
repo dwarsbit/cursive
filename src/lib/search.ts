@@ -90,7 +90,12 @@ export function searchProject(
         continue;
       }
       // Code and the YAML of tutorial blocks are searched as they are written.
-      const line = fence ? raw.trim() : lineWords(raw);
+      // A table's rule row says nothing; its other rows read as their cells.
+      if (!fence && /^\s*\|?[\s:|-]+\|[\s:|-]*$/.test(raw)) continue;
+      const cells = !fence && /^\s*\|/.test(raw)
+        ? raw.trim().replace(/^\||\|$/g, "").split("|").map((cell) => cell.trim()).join(" · ")
+        : raw;
+      const line = fence ? raw.trim() : lineWords(cells);
       if (!line) continue;
       const found = locate(line, needle);
       count += found.length;

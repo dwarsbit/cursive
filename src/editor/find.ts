@@ -1,6 +1,6 @@
 import { Extension, type Editor } from "@tiptap/core";
 import type { Node as ProseNode } from "@tiptap/pm/model";
-import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { matchesIn, type FindQuery, type FindTarget } from "@/lib/find";
 
@@ -92,12 +92,8 @@ export function findTargetFor(editor: Editor): FindTarget {
   const show = (index: number) => {
     const match = state().matches[index];
     if (!match) return;
+    // The match is marked, not selected: a selection would bring up the toolbar.
     set({ current: index });
-    editor.view.dispatch(
-      editor.state.tr
-        .setSelection(TextSelection.create(editor.state.doc, match.from, match.to))
-        .scrollIntoView(),
-    );
     const dom = editor.view.domAtPos(match.from).node;
     (dom instanceof Element ? dom : dom.parentElement)?.scrollIntoView?.({ block: "center" });
   };

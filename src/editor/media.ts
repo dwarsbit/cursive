@@ -261,7 +261,7 @@ export function insertFiles(editor: Editor, files: AddedFile[], pos?: number): v
     chain.command(({ tr }) => {
       const $pos = tr.doc.resolve(tr.mapping.map(cursor));
       const empty = $pos.parent.type.name === "paragraph" && $pos.parent.content.size === 0;
-      if (empty && $pos.depth > 0) {
+      if (empty && $pos.depth === 1) {
         tr.replaceWith($pos.before(), $pos.after(), blocks.map((b) => tr.doc.type.schema.nodeFromJSON(b)));
       } else {
         const after = $pos.depth > 0 ? $pos.after(1) : tr.doc.content.size;
