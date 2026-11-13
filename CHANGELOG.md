@@ -20,6 +20,12 @@
 - Search every page of a project from the sidebar or with Cmd/Ctrl + Shift + F. Results show where the text is, and open the page with it marked.
 - Find text in a page with Cmd/Ctrl + F, in Visual and in Markdown mode, and replace one match or all of them.
 - See a page's earlier versions with the history button in the header: Cursive keeps a snapshot while you write, at most every 10 minutes, or each hour for a project in your account. Compare one with the page now and restore it; the page as it was is kept as a snapshot.
+- Pick a citation style for a page in its reference list: APA, Chicago (author-date), Harvard, IEEE, MLA or Vancouver. IEEE and Vancouver number the works in the order the page cites them. The style is kept in the front matter as `csl: ieee`, as Pandoc reads it, and published sites and PDF exports use it too.
+- Number figures, tables and equations. Turn on "Numbered figure" under an image, add a caption under a table with `/table caption`, or turn on "Numbered equation" under an equation. Its number shows on the page and counts itself as you move things.
+- Refer to a figure, table or equation: type `@` and pick it, and the text reads "Figure 2". It is written `@fig-scores` with the ids as Quarto and pandoc-crossref write them: `{#fig-scores}`, `: Caption {#tbl-steps}` and `$$ … $$ {#eq-mean}`. Published sites link the reference to the figure.
+- Cite from a BibTeX file: add it in Settings and type `@` to pick a work by its key. The desktop app reads the file again on each search, so an export that keeps itself up to date stays current.
+- Look a work up by its DOI or ISBN: type `@` and the DOI or ISBN, and pick the work Crossref or Open Library finds.
+- Cite from Zotero group libraries: find the groups you are in with the group button of a Zotero source in Settings, and turn on the ones to search.
 
 ## 0.1.0 (2026-11-12)
 

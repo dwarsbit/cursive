@@ -277,7 +277,7 @@ export const TableCaption = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ["p", mergeAttributes(HTMLAttributes, { class: "table-caption" }), 0];
+    return ["p", mergeAttributes(HTMLAttributes, { class: "tbl-caption" }), 0];
   },
 
   markdownTokenizer: {

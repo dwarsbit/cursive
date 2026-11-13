@@ -924,19 +924,19 @@
 }
 
 /* Captions of numbered figures and tables, and references to them. */
-.doc .table-caption,
+.doc .tbl-caption,
 .doc .figure-caption {
   margin: 4px 0 10px;
   font-size: 13px;
   line-height: 1.5;
   color: var(--muted-foreground);
 }
-.doc .table-caption[data-number]::before {
+.doc .tbl-caption[data-number]::before {
   content: attr(data-number) " ";
   font-weight: 500;
   color: var(--foreground);
 }
-.doc .table-caption.is-empty::after {
+.doc .tbl-caption.is-empty::after {
   content: attr(data-placeholder);
   opacity: 0.7;
 }
