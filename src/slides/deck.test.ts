@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
-import { documentExtensions } from "@/editor/extensions";
-import { SAMPLE_PROJECT } from "@/editor/sample";
-import { readPage } from "@/lib/page-file";
+import { documentExtensions } from "@cursive/editor/editor/extensions";
+import { SAMPLE_PROJECT } from "@cursive/editor/editor/sample";
+import { readPage } from "@cursive/editor/lib/page-file";
 import {
   isPresentation,
   NEW_PRESENTATION,

@@ -1,28 +1,28 @@
 import { History, PanelLeft, Play, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Editor, type EditorChange } from "@/components/Editor";
-import { MarkdownEditor } from "@/components/MarkdownEditor";
-import { PageProperties } from "@/components/PageProperties";
+import { Editor, type EditorChange } from "@cursive/editor/components/Editor";
+import { MarkdownEditor } from "@cursive/editor/components/MarkdownEditor";
+import { PageProperties } from "@cursive/editor/components/PageProperties";
 import { clampWidth, Sidebar, type DropPlace } from "@/components/Sidebar";
-import { HEADER_BUTTON } from "@/components/Dialog";
+import { HEADER_BUTTON } from "@cursive/editor/components/Dialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
-import { Backlinks } from "@/components/PageLinks";
+import { Backlinks } from "@cursive/editor/components/PageLinks";
 import { FindBar, SearchDialog } from "@/components/Search";
 import { HistoryDialog } from "@/components/HistoryDialog";
 import type { PageSnapshot } from "@/lib/page-history";
 import { ExportDialog } from "@/export/ExportDialog";
-import { ReferencesProvider } from "@/references/context";
-import { STYLE_KEY, styleOfProperties } from "@/references/styles";
-import { setTextProperty } from "@/lib/properties";
+import { ReferencesProvider } from "@cursive/editor/references/context";
+import { STYLE_KEY, styleOfProperties } from "@cursive/editor/references/styles";
+import { setTextProperty } from "@cursive/editor/lib/properties";
 import {
   addToFence,
   toBibliographyFence,
   writeBibliography,
   type Reference,
-} from "@/references/reference";
-import { cn } from "@/lib/cn";
-import { plainText, readPage, writePage, type Page } from "@/lib/page-file";
+} from "@cursive/editor/references/reference";
+import { cn } from "@cursive/editor/lib/cn";
+import { plainText, readPage, writePage, type Page } from "@cursive/editor/lib/page-file";
 import {
   countWords,
   loadClosedFolders,
@@ -53,16 +53,16 @@ import {
   type ProjectStore,
   type TreeNode,
 } from "@/lib/project";
-import { dragWindow } from "@/lib/platform";
+import { dragWindow } from "@cursive/editor/lib/platform";
 import {
   backlinks,
   linkIndex,
   linkablePages,
   rebaseLinks,
   retargetLinks,
-} from "@/lib/links";
-import { WorkspaceProvider, type Workspace } from "@/lib/workspace";
-import { openFind } from "@/lib/find";
+} from "@cursive/editor/lib/links";
+import { WorkspaceProvider, type Workspace } from "@cursive/editor/lib/workspace";
+import { openFind } from "@cursive/editor/lib/find";
 import {
   emptySlide,
   isPresentation,

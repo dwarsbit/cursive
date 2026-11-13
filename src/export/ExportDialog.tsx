@@ -6,7 +6,7 @@ import {
   messageOf,
   PRIMARY_BUTTON,
   QUIET_BUTTON,
-} from "@/components/Dialog";
+} from "@cursive/editor/components/Dialog";
 import { isDesktop } from "@/lib/desktop-store";
 import type { Project } from "@/lib/project";
 import { buildJob, hasSlides, type ExportJob, type Scope } from "./job";

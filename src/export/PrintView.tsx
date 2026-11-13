@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { PagePathProvider } from "@/lib/workspace";
-import { ReferencesProvider } from "@/references/context";
+import { PagePathProvider } from "@cursive/editor/lib/workspace";
+import { ReferencesProvider } from "@cursive/editor/references/context";
 import { SlideView } from "@/slides/SlideView";
 import type { Slide } from "@/slides/deck";
 import { pageRule, type ExportJob, type Part } from "./job";

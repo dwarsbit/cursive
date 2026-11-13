@@ -185,7 +185,7 @@ stays on the computer it was made on.
 ## Develop
 
 Cursive is a Tauri app: a React front end in `src/` and a Rust back end in
-`src-tauri/`. The same front end runs in a browser.
+`src-tauri/`. The block editor is a package of its own in `packages/editor`. The same front end runs in a browser.
 
 ### Requirements
 
@@ -229,16 +229,21 @@ pnpm build:web    # the browser app, into dist-web
 
 ### More
 
-- `src/editor`: the blocks and their Markdown form
-- `src/components`: the two editors, the sidebar and the dialogs
-- `src/references`: citations, the `bibliography` block, the citation
-  styles (`apa.ts`, `styles.ts`), Zotero (`zotero.ts`), BibTeX files
-  (`bibtex.ts`) and DOI and ISBN lookup (`lookup.ts`)
-- `src/editor/numbering.ts`: numbered figures, tables and equations and
-  references to them
-- `src/lib`: a page as a Markdown file (`page-file.ts`), a project as a
-  folder of pages (`project.ts`) and its stores for the desktop app, the
-  demo and the server, and sync (`link-sync.ts`)
+- `packages/editor`: the block editor, shared with
+  [Binder](https://github.com/dwarsbit/binder) as the package
+  `@cursive/editor` ([README](packages/editor/README.md))
+  - `src/editor`: the blocks and their Markdown form, and numbered
+    figures, tables and equations (`numbering.ts`)
+  - `src/components`: the two editors, their menus and the page's
+    properties
+  - `src/references`: citations, the `bibliography` block, the citation
+    styles (`apa.ts`, `styles.ts`), Zotero (`zotero.ts`), BibTeX files
+    (`bibtex.ts`) and DOI and ISBN lookup (`lookup.ts`)
+  - `src/lib`: a page as a Markdown file (`page-file.ts`), its properties,
+    links between pages and search
+- `src/components`: the sidebar and the dialogs
+- `src/lib`: a project as a folder of pages (`project.ts`) and its stores
+  for the desktop app, the demo and the server, and sync (`link-sync.ts`)
 - `src-tauri`: the desktop app, which reads and writes the project's
   folder and signs in to the account
 - `docker/web`: the image of the browser build, which the **Web image**

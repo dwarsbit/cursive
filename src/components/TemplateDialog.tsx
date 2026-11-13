@@ -1,5 +1,5 @@
 import { TEMPLATE_KINDS, TEMPLATES, type Template } from "@/templates";
-import { BUTTON, Dialog } from "./Dialog";
+import { BUTTON, Dialog } from "@cursive/editor/components/Dialog";
 
 /** The project templates by kind. Picking one makes the project. */
 export function TemplateDialog({

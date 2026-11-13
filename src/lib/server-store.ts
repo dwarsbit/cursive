@@ -1,7 +1,7 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import type { Project, ProjectStore } from "./project";
-import { mediaType } from "./file-types";
+import { mediaType } from "@cursive/editor/lib/file-types";
 import {
   diffPages,
   LAYOUT,

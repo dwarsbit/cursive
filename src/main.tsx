@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { SAMPLE_PAGE, SAMPLE_PROJECT } from "./editor/sample";
+import { SAMPLE_PAGE, SAMPLE_PROJECT } from "@cursive/editor/editor/sample";
 import { Desktop } from "./components/Desktop";
 import { Web } from "./components/Web";
 import { browserStore } from "./lib/browser-store";

@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "packages/**"
       - "public/**"
       - "index.html"
       - "vite.config.ts"
@@ -20,6 +21,7 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - "packages/**"
       - "public/**"
       - "index.html"
       - "vite.config.ts"

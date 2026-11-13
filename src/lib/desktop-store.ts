@@ -1,13 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { mediaType } from "./file-types";
+import { mediaType } from "@cursive/editor/lib/file-types";
 import type { Folder } from "./link-sync";
 import type { AssetRef } from "./project-doc";
 import type { PageHistory } from "./page-history";
 import type { Project, ProjectStore } from "./project";
 
-/** Is this the desktop app, not the browser build? */
-export const isDesktop =
-  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export { isDesktop } from "@cursive/editor/lib/platform";
 
 /** How long typing rests before a page is written to disk. */
 const WRITE_DELAY = 400;

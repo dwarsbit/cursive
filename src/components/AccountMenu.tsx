@@ -1,8 +1,8 @@
 import { ExternalLink, LogOut, RefreshCw, RefreshCwOff, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/cn";
+import { cn } from "@cursive/editor/lib/cn";
 import type { Account } from "@/lib/server";
-import { messageOf } from "./Dialog";
+import { messageOf } from "@cursive/editor/components/Dialog";
 
 /** First and last name as two letters: "Anna de Vries" is AV. */
 function initialsOf(name: string): string {

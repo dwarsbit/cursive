@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BUTTON, Dialog, messageOf, PRIMARY_BUTTON } from "./Dialog";
+import { BUTTON, Dialog, messageOf, PRIMARY_BUTTON } from "@cursive/editor/components/Dialog";
 import type { ServerProject } from "@/lib/server";
 
 /** What the dialog is for, once signed in. */

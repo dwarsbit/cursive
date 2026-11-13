@@ -1,3 +1,4 @@
+export { countWords } from "@cursive/editor/lib/page-file";
 export type Mode = "visual" | "markdown";
 
 /** Small things this browser remembers; the app works without them. */
@@ -52,6 +53,3 @@ export const saveSidebarWidth = (width: number) =>
   remember("cursive.sidebar-width", String(width));
 
 /** Words in a text, for the status bar. */
-export function countWords(text: string): number {
-  return text.trim().match(/\S+/g)?.length ?? 0;
-}

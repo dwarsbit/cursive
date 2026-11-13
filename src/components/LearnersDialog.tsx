@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { BUTTON, Dialog, messageOf, QUIET_BUTTON } from "./Dialog";
+import { BUTTON, Dialog, messageOf, QUIET_BUTTON } from "@cursive/editor/components/Dialog";
 import {
   handedInFilePath,
   type Learners,

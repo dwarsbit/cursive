@@ -2,7 +2,7 @@ import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { diffCount, diffLines, type DiffLine } from "@/lib/diff";
 import { snapshotTime, type PageHistory, type PageSnapshot } from "@/lib/page-history";
-import { cn } from "@/lib/cn";
+import { cn } from "@cursive/editor/lib/cn";
 
 /** Unchanged lines shown around a change. */
 const CONTEXT = 3;

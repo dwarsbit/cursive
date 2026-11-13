@@ -1,7 +1,7 @@
 import { Send } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import App, { type Status } from "@/App";
-import { BUTTON, HEADER_BUTTON, messageOf, PRIMARY_BUTTON } from "@/components/Dialog";
+import { BUTTON, HEADER_BUTTON, messageOf, PRIMARY_BUTTON } from "@cursive/editor/components/Dialog";
 import { PublishDialog } from "@/components/PublishDialog";
 import {
   browserSaveFile,

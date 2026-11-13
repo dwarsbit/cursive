@@ -1,0 +1,363 @@
+// @vitest-environment happy-dom
+import { Editor, type JSONContent } from "@tiptap/core";
+import { describe, expect, it } from "vitest";
+import { documentExtensions } from "./extensions";
+import { addTableCaption, newTargetId, numberingOf } from "./numbering";
+import { readPage, tidyMarkdown } from "../lib/page-file";
+import { SAMPLE_PAGE, SAMPLE_PROJECT } from "./sample";
+
+function editorFor(markdown: string) {
+  return new Editor({
+    extensions: documentExtensions(),
+    content: markdown,
+    contentType: "markdown",
+  });
+}
+
+// As the app saves a page: no runs of blank lines.
+const roundTrip = (markdown: string) => tidyMarkdown(editorFor(markdown).getMarkdown()).trim();
+
+describe("Markdown round trip", () => {
+  const cases: Record<string, string> = {
+    paragraph:
+      "Plain text with **bold**, *italic*, ~~struck~~, `code` and ==marked== words.",
+    headings: "# One\n\n## Two\n\n### Three",
+    link: "See [the plan](https://example.com/plan).",
+    "bulleted list": "- One\n- Two\n  - Nested\n- Three",
+    "numbered list": "1. One\n2. Two\n3. Three",
+    "to-do list": "- [x] Done\n- [ ] Not done",
+    quote: "> Pilot the timing, not the hypotheses.",
+    callout: "> [!note]\n> Ethics approval came through.\n>\n> Quote `ERB-2026-118`.",
+    "warning callout": "> [!warning]\n> Check the room booking.",
+    toggle:
+      "<details open>\n<summary>Why 40 participants?</summary>\n\nEnough to spot items people skip.\n\n- One\n- Two\n\n</details>",
+    "closed toggle": "<details>\n<summary>More</summary>\n\nHidden text.\n\n</details>",
+    code: "```r\nscore <- function(df) {\n  rowMeans(df, na.rm = TRUE)\n}\n```",
+    equation: "$$\ns_i = \\frac{1}{k_i} \\sum_j x_{ij}\n$$",
+    "inline math": "The mean $\\bar{x}$ of the items.",
+    divider: "Above\n\n---\n\nBelow",
+    table: [
+      "| Week | Step            |",
+      "| ---- | --------------- |",
+      "| 46   | Print 50 copies |",
+      "| 47   | Pilot session   |",
+    ].join("\n"),
+    quiz: [
+      "```quiz",
+      "id: q1",
+      "question: Which question is double-barrelled?",
+      "options:",
+      "  - How many hours a week do you study?",
+      "  - Was the lecture clear and well paced?",
+      "answer: 2",
+      "points: 2",
+      "attempts: 2",
+      "explanation: It asks about two things at once.",
+      "```",
+    ].join("\n"),
+    "quiz as it was typed":
+      '```quiz\n# my note\nquestion: "Why?"\noptions: [Yes, No]\nanswer: [1]\n```',
+    assignment: [
+      "```assignment",
+      "id: a1",
+      "title: Write five items",
+      "instructions: |-",
+      "  Write five items for a survey.",
+      "",
+      "  Add one sentence on what each measures.",
+      "points: 10",
+      "due: 2026-11-25",
+      "```",
+    ].join("\n"),
+    "assignment with a rubric":
+      "```assignment\nid: a2\ntitle: Plan your pilot\ninstructions: One page.\npoints: 5\nrubric:\n  - criterion: Each item asks about one thing\n    points: 3\n  - criterion: No leading wording\n    points: 2\nfiles: true\n```",
+    "learning goals":
+      "```goals\nitems:\n  - Spot double-barrelled questions\n  - Rewrite a vague item\n```",
+    "key terms":
+      "```terms\nterms:\n  - term: Pilot study\n    definition: A small trial run of a survey.\n```",
+    video:
+      "```video\nurl: https://youtu.be/dQw4w9WgXcQ\ntitle: Spotting double-barrelled questions\n```",
+    "before and after":
+      "```compare\nbefore: How satisfied are you with the content and the teaching?\nafter: |-\n  How satisfied are you with the content?\n\n  How satisfied are you with the teaching?\n```",
+    "fill in the blanks":
+      "```blanks\nid: b1\ntext: A question that pushes toward one answer is a {{leading}} question.\n```",
+    "put in order":
+      "```order\nid: o1\nprompt: Put the steps in order\nitems:\n  - Draft the items\n  - Run a pilot\n  - Field the survey\n```",
+    exercise:
+      "```exercise\nid: e1\nprompt: Rewrite “Do you exercise regularly?”\nhint: What counts as regularly?\nanswer: In the past seven days, on how many days did you exercise?\n```",
+    flashcards:
+      "```flashcards\ncards:\n  - front: Recall period\n    back: The stretch of time a question asks about.\n```",
+    footnote: "The sample was small.^[Twelve students.] A larger study is planned.",
+    "footnote with formatting":
+      "Small.^[See **the plan** at [the site](https://example.com), $n = 12$ and `x[0]`.]",
+    "footnote with a citation": "Small.^[Twelve students, see [@lee2020, p. 4].]",
+    "two footnotes": "One.^[First.] Two.^[Second.]",
+    citation: "Attention is enough [@vaswani2017].",
+    "citation with pages and two works":
+      "As shown before [@vaswani2017, p. 4; @lee2020, pp. 2–3], it holds.",
+    bibliography: [
+      "```bibliography",
+      "- key: vaswani2017",
+      "  type: article",
+      "  author:",
+      "    - Vaswani, Ashish",
+      "    - Shazeer, Noam",
+      "  title: Attention is all you need",
+      '  year: "2017"',
+      "  container: Advances in Neural Information Processing Systems",
+      "  zotero:",
+      "    library: users/123456",
+      "    item: ABCD2345",
+      "    version: 1204",
+      "```",
+    ].join("\n"),
+    "empty bibliography": "```bibliography\n```",
+    "link to a page": "See [[Pilot study]] for the plan.",
+    "link to a page with other words": "See [[Thesis/Pilot study|the pilot]] first.",
+    image: "![Scores per week](attachments/scores.png)",
+    "image with a title": '![Scores](../attachments/scores.png "Week 46")',
+    "image with a space in its name": "![](<attachments/my chart.png>)",
+    "image in the text": "The logo ![logo](logo.svg) is ours.",
+    "image with brackets in its description": "![Item [3] of the scale](attachments/item.png)",
+    "two images": "![One](a.png)\n\n![Two](b.png)",
+    "image from the web": "![A map](https://example.com/map.png)",
+    "attached file": "Read [Interview guide.pdf](attachments/Interview%20guide.pdf) first.",
+    "numbered figure": "![Scores per week](attachments/scores.png){#fig-scores}",
+    "table with a caption": [
+      "| Week | Step            |",
+      "| ---- | --------------- |",
+      "| 46   | Print 50 copies |",
+      "",
+      ": Steps of the *pilot* {#tbl-steps}",
+    ].join("\n"),
+    "numbered equation": "$$\nE = mc^2\n$$ {#eq-energy}",
+    "cross-references": "As @fig-scores and @tbl-steps show, see @eq-energy.",
+    "link to another page's file": "See [the pilot](Pilot%20study.md).",
+  };
+
+  for (const [name, markdown] of Object.entries(cases)) {
+    it(`keeps a ${name}`, () => {
+      expect(roundTrip(markdown)).toBe(markdown);
+    });
+  }
+
+  it("reads the blocks as their own nodes", () => {
+    const doc = editorFor(
+      [cases.callout, cases.toggle, cases["to-do list"], cases.equation].join("\n\n"),
+    ).getJSON();
+    expect(doc.content?.map((node) => node.type)).toEqual([
+      "callout",
+      "details",
+      "taskList",
+      "blockMath",
+    ]);
+    expect(doc.content?.[0].attrs?.kind).toBe("note");
+    expect(doc.content?.[1].attrs?.open).toBe(true);
+  });
+
+  it("numbers figures, tables and equations, and refers to them", () => {
+    const editor = editorFor(
+      [
+        "See @fig-b, @tbl-x and @eq-a; @fig-gone is not here.",
+        "![First](a.png){#fig-a}",
+        "![Second](b.png){#fig-b}",
+        "![Not numbered](c.png)",
+        "| A |\n| - |\n| 1 |",
+        ": Results {#tbl-x}",
+        "$$\nx = 1\n$$ {#eq-a}",
+      ].join("\n\n"),
+    );
+    const doc = editor.getJSON();
+    expect(doc.content?.map((node) => node.type)).toEqual([
+      "paragraph",
+      "image",
+      "image",
+      "image",
+      "table",
+      "tableCaption",
+      "blockMath",
+    ]);
+    expect(
+      (doc.content?.[0].content as JSONContent[])
+        .filter((n) => n.type === "crossRef")
+        .map((n) => n.attrs?.target),
+    ).toEqual(["fig-b", "tbl-x", "eq-a", "fig-gone"]);
+    const targets = numberingOf(editor.state);
+    expect([...targets.values()].map((t) => `${t.id} ${t.label} ${t.caption}`)).toEqual([
+      "fig-a Figure 1 First",
+      "fig-b Figure 2 Second",
+      "tbl-x Table 1 Results",
+      "eq-a Equation 1 x = 1",
+    ]);
+    const labels = [...editor.view.dom.querySelectorAll(".crossref")].map((el) =>
+      el.getAttribute("data-label"),
+    );
+    expect(labels).toEqual(["Figure 2", "Table 1", "Equation 1", "@fig-gone"]);
+  });
+
+  it("makes ids for new figures, tables and equations", () => {
+    expect(newTargetId("fig", "Scores per week.png", [])).toBe("fig-scores-week");
+    expect(newTargetId("fig", "Scores", ["fig-scores"])).toBe("fig-scores-2");
+    expect(newTargetId("eq", "", ["eq-1"])).toBe("eq-2");
+  });
+
+  it("captions the table next to the caret", () => {
+    const editor = editorFor("| Week | Step |\n| - | - |\n| 46 | Print |\n\nx");
+    const last = editor.state.doc.content.size - 1;
+    editor.chain().setTextSelection(last).command(({ tr }) => {
+      tr.delete(last - 1, last);
+      return true;
+    }).command(addTableCaption).insertContent("Steps").run();
+    expect(editor.getMarkdown().trim().split("\n").pop()).toBe(": Steps {#tbl-week-step}");
+  });
+
+  it("reads images, files and page links as their own nodes", () => {
+    const doc = editorFor(
+      [cases.image, cases["attached file"], cases["link to a page with other words"]].join(
+        "\n\n",
+      ),
+    ).getJSON();
+    expect(
+      doc.content?.map((node) => [node.type, node.content?.map((inline) => inline.type)]),
+    ).toEqual([
+      ["image", undefined],
+      ["paragraph", ["text", "attachment", "text"]],
+      ["paragraph", ["text", "pageLink", "text"]],
+    ]);
+    expect(doc.content?.[0].attrs?.src).toBe("attachments/scores.png");
+    expect(editorFor(cases["image in the text"]).getJSON().content?.[0].content?.[1].type).toBe(
+      "inlineImage",
+    );
+    expect((doc.content?.[1].content?.[1] as { attrs?: unknown }).attrs).toEqual({
+      href: "attachments/Interview%20guide.pdf",
+      name: "Interview guide.pdf",
+    });
+    expect((doc.content?.[2].content?.[1] as { attrs?: unknown }).attrs).toEqual({
+      target: "Thesis/Pilot study",
+      label: "the pilot",
+    });
+  });
+
+  it("keeps a toggle inside a toggle", () => {
+    const markdown =
+      "<details open>\n<summary>Outer</summary>\n\n<details>\n<summary>Inner</summary>\n\nText.\n\n</details>\n\n</details>";
+    expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it("writes the sample page the same way twice", () => {
+    const sample = readPage(SAMPLE_PROJECT.pages[SAMPLE_PAGE]).markdown;
+    const once = editorFor(sample).getMarkdown();
+    expect(editorFor(once).getMarkdown()).toBe(once);
+    expect(once).toContain("> [!note]");
+    expect(once).toContain("<details open>");
+    expect(once).toContain("- [x] Translate");
+  });
+
+  it("reads the tutorial blocks as their own nodes", () => {
+    const doc = editorFor([cases.quiz, cases.assignment].join("\n\n")).getJSON();
+    expect(doc.content?.map((node) => node.type)).toEqual(["quiz", "assignment"]);
+    const more = editorFor(
+      [
+        cases["learning goals"],
+        cases["key terms"],
+        cases.video,
+        cases["before and after"],
+        cases["fill in the blanks"],
+        cases["put in order"],
+        cases.exercise,
+        cases.flashcards,
+      ].join("\n\n"),
+    ).getJSON();
+    expect(more.content?.map((node) => node.type)).toEqual([
+      "goals",
+      "terms",
+      "video",
+      "compare",
+      "blanks",
+      "order",
+      "exercise",
+      "flashcards",
+    ]);
+  });
+
+  it("keeps a fence named like a tutorial block as code when it isn't one", () => {
+    const markdown = "```order\nSELECT * FROM t ORDER BY 1\n```";
+    expect(editorFor(markdown).getJSON().content?.[0].type).toBe("codeBlock");
+    expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it("keeps a quiz fence that isn't a quiz as code", () => {
+    const markdown = "```quiz\n- only\n- a list\n```";
+    expect(editorFor(markdown).getJSON().content?.[0].type).toBe("codeBlock");
+    expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it("reads citations and the bibliography as their own nodes", () => {
+    const doc = editorFor(
+      [cases["citation with pages and two works"], cases.bibliography].join("\n\n"),
+    ).getJSON();
+    expect(doc.content?.map((node) => node.type)).toEqual([
+      "paragraph",
+      "bibliography",
+    ]);
+    const cite = doc.content?.[0].content?.find((node) => node.type === "citation");
+    expect(
+      (cite as { attrs?: Record<string, unknown> } | undefined)?.attrs?.items,
+    ).toEqual([
+      { key: "vaswani2017", locator: "p. 4" },
+      { key: "lee2020", locator: "pp. 2–3" },
+    ]);
+  });
+
+  it("keeps a link and a bracket that aren't citations as they are", () => {
+    for (const markdown of [
+      "Mail [@ana](mailto:ana@example.com).",
+      "An [@ not a key] here.",
+    ]) {
+      const doc = editorFor(markdown).getJSON();
+      expect(JSON.stringify(doc)).not.toContain('"citation"');
+    }
+  });
+
+  it("reads a footnote as one node that carries its note", () => {
+    const doc = editorFor(cases["footnote with a citation"]).getJSON();
+    const note = doc.content?.[0].content?.find((node) => node.type === "footnote");
+    expect((note as { attrs?: Record<string, unknown> } | undefined)?.attrs).toEqual({
+      text: "Twelve students, see [@lee2020, p. 4].",
+    });
+  });
+
+  it("keeps a caret and a bracket that aren't a footnote as they are", () => {
+    for (const text of ["An open ^[note", "Empty ^[] note", "x^2 and [1]"]) {
+      const doc = editorFor(text).getJSON();
+      expect(JSON.stringify(doc)).not.toContain('"footnote"');
+    }
+  });
+
+  it("turns a typed footnote into the node on the closing bracket", () => {
+    const editor = editorFor("Small.");
+    editor.commands.focus("end");
+    const type = (text: string) => {
+      const { from, to } = editor.state.selection;
+      const handled = editor.view.someProp("handleTextInput", (handle) =>
+        handle(editor.view, from, to, text, () => editor.state.tr.insertText(text)),
+      );
+      if (!handled) editor.view.dispatch(editor.state.tr.insertText(text, from, to));
+    };
+    for (const ch of "^[A note]") type(ch);
+    expect(editor.getMarkdown().trim()).toBe("Small.^[A note]");
+  });
+
+  it("adds an empty footnote after the selection and leaves no trace of it", () => {
+    const editor = editorFor("Small.");
+    editor.commands.focus("end");
+    expect(editor.commands.insertFootnote()).toBe(true);
+    expect(JSON.stringify(editor.getJSON())).toContain('"footnote"');
+    expect(editor.getMarkdown().trim()).toBe("Small.");
+  });
+
+  it("reads a quote that is not a callout as a quote", () => {
+    const doc = editorFor("> [!unknown]\n> Text.").getJSON();
+    expect(doc.content?.[0].type).toBe("blockquote");
+  });
+});
