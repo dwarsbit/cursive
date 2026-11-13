@@ -1,11 +1,15 @@
 import * as Y from "yjs";
+import { MAX_FILE_BYTES } from "./file-types";
 import {
+  applyAssets,
   applyPages,
   decodeDoc,
   diffPages,
   encodeDoc,
   newDoc,
+  readAssets,
   readPages,
+  type AssetRef,
   type PageChange,
 } from "./project-doc";
 import { ServerError, type Server } from "./server";
@@ -29,6 +33,20 @@ export interface Folder {
   read(): Promise<Record<string, string>>;
   write(path: string, source: string): Promise<void>;
   remove(path: string): Promise<void>;
+  /** The folder's other files, such as images, with the hash of their bytes. */
+  files?(): Promise<Record<string, AssetRef>>;
+  /** Called when a run changed a file, so the window shows it anew. */
+  changedFile?(path: string): void;
+}
+
+/** How a run moves the bytes of files between the folder and the account. */
+export interface FileTransfer {
+  /** The hashes of the files the server has the bytes of. */
+  stored(): Promise<Set<string>>;
+  /** Sends a file of the folder to the server. */
+  upload(path: string, ref: AssetRef): Promise<void>;
+  /** Writes a file from the server into the folder. */
+  download(path: string, ref: AssetRef): Promise<void>;
 }
 
 export interface Link {
@@ -44,6 +62,8 @@ export interface RunResult {
   changes: PageChange[];
   /** Whether the folder had changes the server took. */
   sent: boolean;
+  /** The files the run wrote into the folder or deleted from it. */
+  files: string[];
 }
 
 /** An update that holds nothing is two bytes long. */
@@ -55,14 +75,25 @@ export async function syncRun(
   folder: Folder,
   link: Link,
   writable: boolean,
+  transfer?: FileTransfer,
 ): Promise<RunResult> {
   const doc = link.state ? decodeDoc(link.state) : new Y.Doc();
   // Ask first: when the server can't be reached, nothing has happened yet.
   const theirs = await server.documentSync(link.projectId, Y.encodeStateVector(doc));
 
   const before = await folder.read();
+  // Files too large for the account stay in the folder only.
+  const filesBefore =
+    transfer && folder.files
+      ? Object.fromEntries(
+          Object.entries(await folder.files()).filter(([, ref]) => ref.size <= MAX_FILE_BYTES),
+        )
+      : null;
   // A project you can only read takes nothing from the folder.
-  if (writable) applyPages(doc, before);
+  if (writable) {
+    applyPages(doc, before);
+    if (filesBefore) applyAssets(doc, filesBefore);
+  }
   Y.applyUpdate(doc, theirs.update);
   if (writable && doc.getMap("meta").get("layout") === undefined) {
     doc.getMap("meta").set("layout", newDoc().getMap("meta").get("layout"));
@@ -75,11 +106,48 @@ export async function syncRun(
     else await folder.write(change.path, change.text);
   }
 
+  // Files: what changed elsewhere comes into the folder.
+  const files: string[] = [];
+  if (transfer && filesBefore) {
+    const filesAfter = readAssets(doc);
+    for (const [path, ref] of Object.entries(filesAfter)) {
+      if (filesBefore[path]?.hash === ref.hash) continue;
+      await transfer.download(path, ref);
+      files.push(path);
+    }
+    for (const path of Object.keys(filesBefore)) {
+      if (path in filesAfter || path in after) continue;
+      await folder.remove(path);
+      files.push(path);
+    }
+    files.forEach((path) => folder.changedFile?.(path));
+  }
+
   const mine = Y.encodeStateAsUpdate(doc, theirs.stateVector);
   const sent = writable && !isEmpty(mine);
-  if (sent) await server.documentUpdate(link.projectId, mine);
+  if (sent) {
+    // The bytes go first, so every file the document names can be fetched.
+    if (transfer && filesBefore) {
+      const local = Object.entries(filesBefore);
+      if (local.length) {
+        const stored = await transfer.stored();
+        const sending = new Set<string>();
+        for (const [path, ref] of local) {
+          if (stored.has(ref.hash) || sending.has(ref.hash)) continue;
+          sending.add(ref.hash);
+          await transfer.upload(path, ref);
+        }
+      }
+    }
+    await server.documentUpdate(link.projectId, mine);
+  }
 
-  return { link: { projectId: link.projectId, state: encodeDoc(doc) }, changes, sent };
+  return {
+    link: { projectId: link.projectId, state: encodeDoc(doc) },
+    changes,
+    sent,
+    files,
+  };
 }
 
 export type SyncState =
@@ -100,6 +168,8 @@ export interface FolderSync {
   /** A run soon: called when a page was saved. */
   touch(): void;
   onChanges(listener: (changes: PageChange[]) => void): () => void;
+  /** Tells of files a run changed in the folder, with every file the folder has. */
+  onFiles(listener: (files: string[]) => void): () => void;
   onState(listener: (state: SyncState) => void): () => void;
   state(): SyncState;
   stop(): void;
@@ -114,6 +184,8 @@ export function folderSync(options: {
   folder: Folder;
   link: Link;
   writable: boolean;
+  /** Moves the bytes of images and other files; without it, only pages sync. */
+  transfer?: FileTransfer;
   /** Keeps the link for the next time the folder is opened. */
   saveLink: (link: Link) => Promise<void>;
 }): FolderSync {
@@ -124,6 +196,7 @@ export function folderSync(options: {
   let stopped = false;
   let soon: ReturnType<typeof setTimeout> | undefined;
   const changeListeners = new Set<(changes: PageChange[]) => void>();
+  const fileListeners = new Set<(files: string[]) => void>();
   const stateListeners = new Set<(state: SyncState) => void>();
 
   const setState = (next: SyncState) => {
@@ -139,11 +212,16 @@ export function folderSync(options: {
         options.folder,
         link,
         options.writable,
+        options.transfer,
       );
       link = result.link;
       await options.saveLink(link);
       if (result.changes.length > 0) {
         changeListeners.forEach((listener) => listener(result.changes));
+      }
+      if (result.files.length > 0) {
+        const files = await options.folder.files?.().catch(() => null);
+        if (files) fileListeners.forEach((listener) => listener(Object.keys(files).sort()));
       }
       setState({ kind: "synced" });
     } catch (error) {
@@ -189,6 +267,10 @@ export function folderSync(options: {
     onChanges: (listener) => {
       changeListeners.add(listener);
       return () => changeListeners.delete(listener);
+    },
+    onFiles: (listener) => {
+      fileListeners.add(listener);
+      return () => fileListeners.delete(listener);
     },
     onState: (listener) => {
       stateListeners.add(listener);

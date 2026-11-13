@@ -6,17 +6,44 @@ import * as Y from "yjs";
  *
  * - `texts`: file id → the file's text (a Y.Text).
  * - `paths`: file id → its path in the project.
- * - `assets`: path → a binary file by its hash. Cursive has none yet
- *   and leaves the map alone.
+ * - `assets`: path → a binary file by the SHA-256 of its bytes, its
+ *   size and its media type. The bytes are kept on the server apart
+ *   from the document. Cursive keeps a page's images and attached
+ *   files here.
  * - `meta`: `layout` = 1.
  *
- * Cursive works on the pages, the `.md` files. Anything else in the
- * document stays as it is.
+ * Cursive works on the pages, the `.md` files, and the assets. Anything
+ * else in the document stays as it is.
  */
 export const LAYOUT = 1;
 
 const texts = (doc: Y.Doc) => doc.getMap<Y.Text>("texts");
 const paths = (doc: Y.Doc) => doc.getMap<string>("paths");
+const assets = (doc: Y.Doc) => doc.getMap<AssetRef>("assets");
+
+/** A file that isn't text, as the document names it: its bytes by their hash. */
+export interface AssetRef {
+  /** The SHA-256 of the bytes, in lowercase hex. */
+  hash: string;
+  size: number;
+  /** The media type, such as `image/png`. */
+  type: string;
+}
+
+const isAssetRef = (value: unknown): value is AssetRef => {
+  const ref = value as AssetRef | null;
+  return (
+    typeof ref === "object" &&
+    ref !== null &&
+    typeof ref.hash === "string" &&
+    /^[0-9a-f]{64}$/.test(ref.hash) &&
+    Number.isSafeInteger(ref.size) &&
+    ref.size >= 0 &&
+    typeof ref.type === "string"
+  );
+};
+
+const isHidden = (path: string) => path.split("/").some((part) => part.startsWith("."));
 
 const isPage = (path: string) =>
   /\.md$/i.test(path) && !path.split("/").some((part) => part.startsWith("."));
@@ -67,6 +94,37 @@ export function pageIds(doc: Y.Doc): Map<string, string> {
   for (const [path, id] of losers) if (!found.has(path)) found.set(path, id);
   for (const path of [...found.keys()]) if (!isPage(path)) found.delete(path);
   return found;
+}
+
+/** The document's other files: path → its bytes by their hash. A page's path wins over a file's. */
+export function readAssets(doc: Y.Doc): Record<string, AssetRef> {
+  const pages = pageIds(doc);
+  const found: Record<string, AssetRef> = {};
+  for (const [path, ref] of assets(doc)) {
+    if (!validPath(path) || isHidden(path) || isPage(path) || pages.has(path)) continue;
+    if (isAssetRef(ref)) found[path] = { hash: ref.hash, size: ref.size, type: ref.type };
+  }
+  return found;
+}
+
+/** Adds a file to the document, or points its path at other bytes. */
+export function writeAsset(doc: Y.Doc, path: string, ref: AssetRef): void {
+  const current = assets(doc).get(path);
+  if (isAssetRef(current) && current.hash === ref.hash && current.type === ref.type) return;
+  assets(doc).set(path, { hash: ref.hash, size: ref.size, type: ref.type });
+}
+
+/**
+ * Brings the document's files in line with `files`: new and changed
+ * ones are set, missing ones deleted.
+ */
+export function applyAssets(doc: Y.Doc, files: Record<string, AssetRef>): void {
+  doc.transact(() => {
+    for (const path of Object.keys(readAssets(doc))) {
+      if (!(path in files)) assets(doc).delete(path);
+    }
+    for (const [path, ref] of Object.entries(files)) writeAsset(doc, path, ref);
+  });
 }
 
 /** The document's pages: path → text. */
@@ -121,6 +179,11 @@ export function writeDocPage(doc: Y.Doc, path: string, source: string): void {
 /** Moves a page, or every page of a folder. A file keeps its id, so its history moves with it. */
 export function renameInDoc(doc: Y.Doc, from: string, to: string): void {
   doc.transact(() => {
+    for (const [path, ref] of Object.entries(readAssets(doc))) {
+      if (path !== from && !path.startsWith(`${from}/`)) continue;
+      assets(doc).delete(path);
+      assets(doc).set(to + path.slice(from.length), ref);
+    }
     for (const [path, id] of pageIds(doc)) {
       if (path === from) paths(doc).set(id, to);
       else if (path.startsWith(`${from}/`))
@@ -132,6 +195,9 @@ export function renameInDoc(doc: Y.Doc, from: string, to: string): void {
 /** Deletes a page, or every page of a folder. */
 export function removeFromDoc(doc: Y.Doc, path: string): void {
   doc.transact(() => {
+    for (const file of Object.keys(readAssets(doc))) {
+      if (file === path || file.startsWith(`${path}/`)) assets(doc).delete(file);
+    }
     for (const [page, id] of pageIds(doc)) {
       if (page !== path && !page.startsWith(`${path}/`)) continue;
       texts(doc).delete(id);

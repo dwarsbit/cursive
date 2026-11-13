@@ -1,4 +1,5 @@
 mod account;
+mod files;
 mod link;
 mod project;
 mod projects;
@@ -23,6 +24,10 @@ pub fn run() {
             project::project_create_folder,
             project::project_rename,
             project::project_remove,
+            project::project_files,
+            project::project_read_file,
+            project::project_write_file,
+            project::project_open_file,
             projects::projects_list,
             projects::projects_create,
             projects::projects_opened,
@@ -39,6 +44,8 @@ pub fn run() {
             link::link_load,
             link::link_save,
             link::link_remove,
+            files::link_upload_file,
+            files::link_download_file,
             zotero::zotero_local_fetch,
             zotero::zotero_key_get,
             zotero::zotero_key_set,

@@ -112,7 +112,7 @@ interface Answer {
   body: string;
 }
 
-type Body = { json: unknown } | { bytes: Uint8Array } | undefined;
+type Body = { json: unknown } | { bytes: Uint8Array; type?: string } | undefined;
 
 /** Sends one request to the server's API and returns its status and body. */
 export type Transport = (method: string, path: string, body?: Body) => Promise<Answer>;
@@ -127,7 +127,7 @@ export const browserTransport: Transport = async (method, path, body) => {
       headers: body
         ? {
             "content-type":
-              "json" in body ? "application/json" : "application/octet-stream",
+              "json" in body ? "application/json" : (body.type ?? "application/octet-stream"),
           }
         : undefined,
       body: body
@@ -251,6 +251,40 @@ export class Server {
         bytes: update,
       },
     );
+  }
+
+  /** The files whose bytes the server keeps for the project. */
+  async assets(id: string): Promise<Array<{ hash: string; size: number; contentType: string }>> {
+    const list = await this.call<{
+      assets: Array<{ hash: string; size: number; contentType: string }>;
+    }>("GET", `/api/projects/${encodeURIComponent(id)}/assets`);
+    return list.assets;
+  }
+
+  /** Keeps a file's bytes for the project, by their SHA-256. */
+  uploadAsset(id: string, hash: string, bytes: Uint8Array, type: string): Promise<void> {
+    return this.call(
+      "PUT",
+      `/api/projects/${encodeURIComponent(id)}/assets/${encodeURIComponent(hash)}`,
+      { bytes, type },
+    );
+  }
+
+  /** Snapshots of the project, newest first: the server takes one each hour it changes. */
+  async history(id: string): Promise<Array<{ id: string; kind: string; createdAt: string }>> {
+    const list = await this.call<{
+      snapshots: Array<{ id: string; kind: string; createdAt: string }>;
+    }>("GET", `/api/projects/${encodeURIComponent(id)}/history`);
+    return list.snapshots;
+  }
+
+  /** The project's pages as one snapshot holds them. */
+  async snapshot(id: string, snapshotId: string): Promise<Record<string, string>> {
+    const found = await this.call<{ files: Array<{ path: string; text: string }> }>(
+      "GET",
+      `/api/projects/${encodeURIComponent(id)}/history/${encodeURIComponent(snapshotId)}`,
+    );
+    return Object.fromEntries(found.files.map((file) => [file.path, file.text]));
   }
 
   site(id: string): Promise<SiteState> {

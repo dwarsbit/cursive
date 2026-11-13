@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { syncRun, type Folder, type Link } from "./link-sync";
-import { fromBase64, newDoc, readPages, toBase64, writeDocPage } from "./project-doc";
+import { syncRun, type FileTransfer, type Folder, type Link } from "./link-sync";
+import {
+  fromBase64,
+  newDoc,
+  readAssets,
+  readPages,
+  toBase64,
+  writeDocPage,
+} from "./project-doc";
 import { Server, ServerError, type Transport } from "./server";
 
 /** A server with one project's document, speaking the API's two sync calls. */
@@ -159,5 +166,104 @@ describe("syncRun", () => {
     expect(run.sent).toBe(false);
     expect(pages()).toEqual({ "a.md": "Theirs\n" });
     expect(reader.disk["a.md"]).toBe("Theirs\n");
+  });
+});
+
+describe("syncRun with files", () => {
+  const ref = (hash: string, size = 3) => ({ hash: hash.repeat(64), size, type: "image/png" });
+
+  /** A computer whose folder also holds files, and a server that keeps their bytes. */
+  function withFiles(stored: Set<string>, bytes: Map<string, string>) {
+    const pages: Record<string, string> = {};
+    const files: Record<string, { hash: string; size: number; type: string }> = {};
+    const content: Record<string, string> = {};
+    const uploads: string[] = [];
+    const folder: Folder = {
+      read: async () => ({ ...pages }),
+      write: async (path, source) => void (pages[path] = source),
+      remove: async (path) => {
+        delete pages[path];
+        delete files[path];
+      },
+      files: async () => ({ ...files }),
+    };
+    const transfer: FileTransfer = {
+      stored: async () => new Set(stored),
+      upload: async (path, file) => {
+        uploads.push(path);
+        stored.add(file.hash);
+        bytes.set(file.hash, content[path]);
+      },
+      download: async (path, file) => {
+        files[path] = file;
+        content[path] = bytes.get(file.hash)!;
+      },
+    };
+    let link: Link = { projectId: "p1", state: "" };
+    return {
+      pages,
+      files,
+      content,
+      uploads,
+      sync: async (server: Server) => {
+        const result = await syncRun(server, folder, link, true, transfer);
+        link = result.link;
+        return result;
+      },
+    };
+  }
+
+  it("sends a folder's files once and brings them to another computer", async () => {
+    const { server, doc } = fakeServer();
+    const stored = new Set<string>();
+    const bytes = new Map<string, string>();
+    const laptop = withFiles(stored, bytes);
+    laptop.pages["Home.md"] = "![chart](attachments/chart.png)\n";
+    laptop.files["attachments/chart.png"] = ref("a");
+    laptop.content["attachments/chart.png"] = "png";
+    await laptop.sync(server);
+    expect(laptop.uploads).toEqual(["attachments/chart.png"]);
+    expect(readAssets(doc)).toEqual({ "attachments/chart.png": ref("a") });
+
+    const desktop = withFiles(stored, bytes);
+    const first = await desktop.sync(server);
+    expect(first.files).toEqual(["attachments/chart.png"]);
+    expect(desktop.content["attachments/chart.png"]).toBe("png");
+
+    // Nothing changed: nothing is sent again.
+    await laptop.sync(server);
+    expect(laptop.uploads).toEqual(["attachments/chart.png"]);
+  });
+
+  it("deletes a file on the other computer, and brings a changed one", async () => {
+    const { server } = fakeServer();
+    const stored = new Set<string>();
+    const bytes = new Map<string, string>();
+    const laptop = withFiles(stored, bytes);
+    laptop.files["a.png"] = ref("a");
+    laptop.files["b.png"] = ref("b");
+    laptop.content["a.png"] = "one";
+    laptop.content["b.png"] = "two";
+    await laptop.sync(server);
+    const desktop = withFiles(stored, bytes);
+    await desktop.sync(server);
+
+    delete laptop.files["a.png"];
+    laptop.files["b.png"] = ref("c");
+    laptop.content["b.png"] = "new";
+    await laptop.sync(server);
+    const later = await desktop.sync(server);
+    expect(later.files.sort()).toEqual(["a.png", "b.png"]);
+    expect(Object.keys(desktop.files)).toEqual(["b.png"]);
+    expect(desktop.content["b.png"]).toBe("new");
+  });
+
+  it("keeps files too large for the account in the folder only", async () => {
+    const { server, doc } = fakeServer();
+    const laptop = withFiles(new Set(), new Map());
+    laptop.files["video.mp4"] = { ...ref("d"), size: 60 * 1024 * 1024 };
+    await laptop.sync(server);
+    expect(readAssets(doc)).toEqual({});
+    expect(laptop.uploads).toEqual([]);
   });
 });

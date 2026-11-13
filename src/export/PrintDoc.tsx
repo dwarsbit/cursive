@@ -8,6 +8,7 @@ import {
 } from "@tiptap/react";
 import { useState } from "react";
 import { Footnotes } from "@/components/Footnotes";
+import { withPageViews } from "@/components/MediaViews";
 import { withReferenceViews } from "@/components/ReferenceViews";
 import { points } from "@/components/TutorialViews";
 import { documentExtensions } from "@/editor/extensions";
@@ -257,7 +258,7 @@ const VIEWS: Record<TutorialKind, React.ComponentType<ReactNodeViewProps>> = {
 };
 
 const printExtensions = (): AnyExtension[] =>
-  withReferenceViews(documentExtensions()).map((extension) => {
+  withPageViews(withReferenceViews(documentExtensions())).map((extension) => {
     const view = VIEWS[extension.name as TutorialKind] as
       React.ComponentType<ReactNodeViewProps> | undefined;
     if (!view || extension.type !== "node") return extension;

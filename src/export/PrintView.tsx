@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { PagePathProvider } from "@/lib/workspace";
 import { ReferencesProvider } from "@/references/context";
 import { SlideView } from "@/slides/SlideView";
 import type { Slide } from "@/slides/deck";
@@ -53,6 +54,16 @@ export function PrintView({ job, onReady }: { job: ExportJob; onReady: () => voi
       // Blocks drawn by the editor arrive a moment after the page itself.
       await new Promise((resolve) => setTimeout(resolve, 150));
       await document.fonts?.ready;
+      // Images come from the project a moment later, and load after that.
+      for (let waited = 0; waited < 5_000; waited += 100) {
+        if (!root.current?.querySelector(".media-loading")) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      await Promise.all(
+        [...(root.current?.querySelectorAll("img") ?? [])].map((img) =>
+          img.decode().catch(() => {}),
+        ),
+      );
       await new Promise((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(resolve)),
       );
@@ -88,24 +99,26 @@ export function PrintView({ job, onReady }: { job: ExportJob; onReady: () => voi
           </ul>
         </section>
       )}
-      {job.parts.map((part) =>
-        part.kind === "slides" && job.format === "slides" ? (
-          <ReferencesProvider key={part.path} markdown={partMarkdown(part)}>
-            <Slides part={part} notes={false} />
-          </ReferencesProvider>
-        ) : (
-          <ReferencesProvider key={part.path} markdown={partMarkdown(part)}>
-            <section className="print-part">
-              <h1 className="print-title">{part.title}</h1>
-              {part.kind === "slides" ? (
-                <Slides part={part} notes={job.notes} />
-              ) : (
-                <PrintDoc markdown={part.markdown} />
-              )}
-            </section>
-          </ReferencesProvider>
-        ),
-      )}
+      {job.parts.map((part) => (
+        <PagePathProvider key={part.path} value={part.path}>
+          {part.kind === "slides" && job.format === "slides" ? (
+            <ReferencesProvider markdown={partMarkdown(part)}>
+              <Slides part={part} notes={false} />
+            </ReferencesProvider>
+          ) : (
+            <ReferencesProvider markdown={partMarkdown(part)}>
+              <section className="print-part">
+                <h1 className="print-title">{part.title}</h1>
+                {part.kind === "slides" ? (
+                  <Slides part={part} notes={job.notes} />
+                ) : (
+                  <PrintDoc markdown={part.markdown} />
+                )}
+              </section>
+            </ReferencesProvider>
+          )}
+        </PagePathProvider>
+      ))}
     </div>,
     document.body,
   );

@@ -2182,3 +2182,197 @@
 .doc.footnote-field:focus {
   border-color: var(--ring);
 }
+
+/* A link to another page: the page's title with a page icon. */
+.doc .page-link {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0 2px;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--tint) 45%, transparent);
+  text-underline-offset: 3px;
+  white-space: normal;
+}
+.doc .page-link:hover {
+  text-decoration-color: var(--tint);
+  background: var(--tint-soft);
+}
+.doc .page-link.is-selected {
+  background: var(--tint-soft);
+}
+.doc .page-link-icon {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 2px;
+  vertical-align: -0.08em;
+  color: var(--muted-foreground);
+}
+.doc .page-link-missing {
+  color: var(--muted-foreground);
+  text-decoration-style: dashed;
+  text-decoration-color: var(--muted-foreground);
+}
+/* The pages that link to this one, under its blocks. */
+.backlinks {
+  margin: 28px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.backlinks h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.backlinks ul {
+  margin: 0 -8px;
+  padding: 0;
+  list-style: none;
+}
+.backlinks button {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 13px;
+}
+.backlinks button:hover {
+  background: var(--muted);
+}
+.backlink-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.backlink-title svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--muted-foreground);
+}
+.backlink-excerpt {
+  padding-left: 20px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.print-root .page-link-icon {
+  display: none;
+}
+
+/* An image on a line of its own. */
+.doc .image-block {
+  position: relative;
+  margin: 0.6em 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.doc .image-block img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.doc .image-block.is-selected img,
+.doc .image-block.is-selected .image-missing {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.doc .image-missing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.doc .image-missing svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.doc .image-missing.media-loading {
+  justify-content: center;
+  min-height: 120px;
+  background: var(--muted);
+  border-style: solid;
+}
+.doc .image-alt {
+  width: min(100%, 420px);
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--background);
+  font-size: 12px;
+  color: var(--foreground);
+}
+.doc .image-alt:focus {
+  outline: none;
+  border-color: var(--ring);
+}
+.doc .inline-image img {
+  display: inline;
+  max-height: 1.6em;
+  vertical-align: -0.35em;
+}
+.doc .inline-image.is-selected img {
+  outline: 2px solid var(--ring);
+}
+/* A file of the project in the text. */
+.doc .attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--muted);
+  font-size: 0.9em;
+  line-height: 1.5;
+  vertical-align: 0.05em;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.doc .attachment:hover {
+  border-color: var(--tint-edge);
+  background: var(--tint-soft);
+}
+.doc .attachment svg {
+  width: 0.95em;
+  height: 0.95em;
+  flex: none;
+  color: var(--muted-foreground);
+}
+.doc .attachment.is-selected {
+  border-color: var(--ring);
+}
+.doc .attachment-missing {
+  cursor: default;
+  color: var(--muted-foreground);
+  border-style: dashed;
+  background: transparent;
+}
+.slide .doc .image-block img {
+  max-height: 320px;
+  object-fit: contain;
+}
+.print-root .doc .image-block img {
+  break-inside: avoid;
+  max-height: 80vh;
+}

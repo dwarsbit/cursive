@@ -3,9 +3,13 @@
 //! from the webview are relative to the project folder and use `/`.
 
 use serde::Serialize;
-use std::collections::BTreeMap;
+use sha2::{Digest, Sha256};
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
+use std::time::SystemTime;
 
 #[derive(Serialize, Debug, PartialEq)]
 pub struct Project {
@@ -15,14 +19,29 @@ pub struct Project {
     pub folders: Vec<String>,
     /// Each page's file, by path.
     pub pages: BTreeMap<String, String>,
+    /// The other files, such as images and attachments.
+    pub files: Vec<String>,
+}
+
+/// A file that isn't a page, as a sync names it: its bytes by their hash.
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub struct FileInfo {
+    /// The SHA-256 of the bytes, in lowercase hex.
+    pub hash: String,
+    pub size: u64,
+    /// The media type, from the file's name.
+    #[serde(rename = "type")]
+    pub kind: String,
 }
 
 /// Folders that are never part of a project.
 const SKIP_DIRS: [&str; 1] = ["node_modules"];
+/// Files the system leaves in folders, which are no part of a project.
+const SKIP_FILES: [&str; 3] = ["Thumbs.db", "desktop.ini", "Icon\r"];
 
 /// Resolve a path from the webview inside the project, refusing
 /// absolute paths, `..` and symlinks that lead out of the folder.
-fn resolve(project_dir: &str, rel_path: &str) -> Result<PathBuf, String> {
+pub(crate) fn resolve(project_dir: &str, rel_path: &str) -> Result<PathBuf, String> {
     if rel_path.is_empty() {
         return Err("empty path".into());
     }
@@ -49,7 +68,7 @@ fn resolve(project_dir: &str, rel_path: &str) -> Result<PathBuf, String> {
 /// Replace a file's content atomically: write a sibling temp file, then
 /// rename it over the target, so a crash mid-write never leaves a
 /// truncated file behind.
-fn write_atomic(path: &Path, content: &[u8]) -> std::io::Result<()> {
+pub(crate) fn write_atomic(path: &Path, content: &[u8]) -> std::io::Result<()> {
     let name = path
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
@@ -89,6 +108,8 @@ fn walk(dir: &Path, prefix: &str, project: &mut Project) -> Result<(), String> {
             if let Ok(source) = fs::read_to_string(entry.path()) {
                 project.pages.insert(path, source);
             }
+        } else if kind.is_file() && !SKIP_FILES.contains(&name.as_str()) {
+            project.files.push(path);
         }
     }
     Ok(())
@@ -107,10 +128,127 @@ pub fn load(project_dir: &str) -> Result<Project, String> {
             .unwrap_or_else(|| "Project".into()),
         folders: Vec::new(),
         pages: BTreeMap::new(),
+        files: Vec::new(),
     };
     walk(&base, "", &mut project)?;
     project.folders.sort();
+    project.files.sort();
     Ok(project)
+}
+
+/// The media type of a file, from its name.
+pub fn media_type(path: &str) -> &'static str {
+    let extension = path
+        .rsplit_once('.')
+        .map(|(_, ext)| ext.to_ascii_lowercase())
+        .unwrap_or_default();
+    match extension.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "avif" => "image/avif",
+        "svg" => "image/svg+xml",
+        "bmp" => "image/bmp",
+        "ico" => "image/x-icon",
+        "heic" => "image/heic",
+        "pdf" => "application/pdf",
+        "txt" => "text/plain",
+        "csv" => "text/csv",
+        "tsv" => "text/tab-separated-values",
+        "json" => "application/json",
+        "bib" => "application/x-bibtex",
+        "tex" => "application/x-tex",
+        "zip" => "application/zip",
+        "doc" => "application/msword",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "xls" => "application/vnd.ms-excel",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "ppt" => "application/vnd.ms-powerpoint",
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "odt" => "application/vnd.oasis.opendocument.text",
+        "mp3" => "audio/mpeg",
+        "wav" => "audio/wav",
+        "mp4" => "video/mp4",
+        "webm" => "video/webm",
+        "mov" => "video/quicktime",
+        _ => "application/octet-stream",
+    }
+}
+
+/// The SHA-256 of a file, in lowercase hex.
+pub fn hash_file(path: &Path) -> std::io::Result<String> {
+    let mut file = fs::File::open(path)?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(hasher.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// Hashes already made, by the file's place, size and time of change:
+/// a sync asks for every file every little while.
+type HashCache = HashMap<PathBuf, (u64, SystemTime, String)>;
+fn hash_cache() -> &'static Mutex<HashCache> {
+    static CACHE: OnceLock<Mutex<HashCache>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// The project's files that aren't pages, with the hash of their bytes.
+pub fn files(project_dir: &str) -> Result<BTreeMap<String, FileInfo>, String> {
+    let project = load(project_dir)?;
+    let base = fs::canonicalize(project_dir).map_err(|e| e.to_string())?;
+    let mut found = BTreeMap::new();
+    for path in project.files {
+        let full = base.join(&path);
+        let Ok(meta) = fs::metadata(&full) else {
+            continue;
+        };
+        let size = meta.len();
+        let changed = meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
+        let known = hash_cache()
+            .lock()
+            .ok()
+            .and_then(|cache| cache.get(&full).cloned())
+            .filter(|(s, m, _)| *s == size && *m == changed)
+            .map(|(_, _, hash)| hash);
+        let hash = match known {
+            Some(hash) => hash,
+            None => {
+                let Ok(hash) = hash_file(&full) else {
+                    continue;
+                };
+                if let Ok(mut cache) = hash_cache().lock() {
+                    cache.insert(full.clone(), (size, changed, hash.clone()));
+                }
+                hash
+            }
+        };
+        let kind = media_type(&path).to_string();
+        found.insert(path, FileInfo { hash, size, kind });
+    }
+    Ok(found)
+}
+
+pub fn read_file(project_dir: &str, path: &str) -> Result<Vec<u8>, String> {
+    let target = resolve(project_dir, path)?;
+    fs::read(&target).map_err(|e| format!("can't read {path}: {e}"))
+}
+
+pub fn write_file(project_dir: &str, path: &str, bytes: &[u8]) -> Result<(), String> {
+    if is_page(path) {
+        return Err("a page is written as text".into());
+    }
+    let target = resolve(project_dir, path)?;
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("can't create the folder: {e}"))?;
+    }
+    write_atomic(&target, bytes).map_err(|e| format!("can't write {path}: {e}"))
 }
 
 pub fn write_page(project_dir: &str, path: &str, source: &str) -> Result<(), String> {
@@ -189,6 +327,50 @@ pub fn project_write_page(dir: String, path: String, source: String) -> Result<(
 }
 
 #[tauri::command]
+pub fn project_files(dir: String) -> Result<BTreeMap<String, FileInfo>, String> {
+    files(&dir)
+}
+
+#[tauri::command]
+pub fn project_read_file(dir: String, path: String) -> Result<tauri::ipc::Response, String> {
+    read_file(&dir, &path).map(tauri::ipc::Response::new)
+}
+
+/// Writes a file the window sends as bytes; the folder and the path
+/// come in the request's headers, URL-encoded.
+#[tauri::command]
+pub fn project_write_file(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("the file's bytes are missing".into());
+    };
+    let header = |name: &str| -> Result<String, String> {
+        let raw = request
+            .headers()
+            .get(name)
+            .and_then(|value| value.to_str().ok())
+            .ok_or_else(|| format!("the request has no {name}"))?;
+        percent_encoding::percent_decode_str(raw)
+            .decode_utf8()
+            .map(|value| value.to_string())
+            .map_err(|_| format!("the {name} is not text"))
+    };
+    write_file(&header("dir")?, &header("path")?, bytes)
+}
+
+/// Opens a file of the project in the app the system opens it with.
+#[tauri::command]
+pub fn project_open_file(app: tauri::AppHandle, dir: String, path: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let target = resolve(&dir, &path)?;
+    if !target.is_file() {
+        return Err(format!("{path} is not in the project"));
+    }
+    app.opener()
+        .open_path(target.to_string_lossy(), None::<&str>)
+        .map_err(|e| format!("can't open {path}: {e}"))
+}
+
+#[tauri::command]
 pub fn project_create_folder(dir: String, path: String) -> Result<(), String> {
     create_folder(&dir, &path)
 }
@@ -252,6 +434,7 @@ mod tests {
 
         let loaded = load(project.dir()).unwrap();
         assert_eq!(loaded.folders, vec!["Empty", "Thesis"]);
+        assert_eq!(loaded.files, vec!["image.png"]);
         assert_eq!(
             loaded.pages.keys().collect::<Vec<_>>(),
             vec!["Reading list.MD", "Thesis/Pilot study plan.md"]
@@ -261,6 +444,30 @@ mod tests {
             loaded.name,
             project.0.file_name().unwrap().to_string_lossy()
         );
+    }
+
+    #[test]
+    fn writes_reads_and_hashes_other_files() {
+        let project = TempProject::new();
+        write_file(project.dir(), "attachments/chart.png", b"png bytes").unwrap();
+        assert_eq!(
+            read_file(project.dir(), "attachments/chart.png").unwrap(),
+            b"png bytes"
+        );
+        let found = files(project.dir()).unwrap();
+        let chart = &found["attachments/chart.png"];
+        assert_eq!(chart.size, 9);
+        assert_eq!(chart.kind, "image/png");
+        // The hash is the SHA-256 of the bytes.
+        let digest = Sha256::digest(b"png bytes");
+        let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
+        assert_eq!(chart.hash, hex);
+        // A changed file gets a new hash.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        write_file(project.dir(), "attachments/chart.png", b"other bytes").unwrap();
+        assert_ne!(files(project.dir()).unwrap()["attachments/chart.png"].hash, hex);
+        assert!(write_file(project.dir(), "page.md", b"x").is_err());
+        assert!(read_file(project.dir(), "../outside.png").is_err());
     }
 
     #[test]

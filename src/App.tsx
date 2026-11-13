@@ -7,6 +7,7 @@ import { PageProperties } from "@/components/PageProperties";
 import { clampWidth, Sidebar, type DropPlace } from "@/components/Sidebar";
 import { HEADER_BUTTON } from "@/components/Dialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { Backlinks } from "@/components/PageLinks";
 import { ExportDialog } from "@/export/ExportDialog";
 import { ReferencesProvider } from "@/references/context";
 import {
@@ -37,6 +38,7 @@ import {
   buildTree,
   countPages,
   fileNameFor,
+  freeFilePath,
   freePath,
   orderPages,
   parentOf,
@@ -47,6 +49,14 @@ import {
   type TreeNode,
 } from "@/lib/project";
 import { dragWindow } from "@/lib/platform";
+import {
+  backlinks,
+  linkIndex,
+  linkablePages,
+  rebaseLinks,
+  retargetLinks,
+} from "@/lib/links";
+import { WorkspaceProvider, type Workspace } from "@/lib/workspace";
 import {
   emptySlide,
   isPresentation,
@@ -131,6 +141,10 @@ export default function App({
     setProject(next);
   };
   const [active, setActive] = useState<string | null>(null);
+  // Counts the changes to the project's files, so images show their new bytes.
+  const [filesVersion, setFilesVersion] = useState(0);
+  // The open page's title and path as links last knew them.
+  const linked = useRef<{ path: string; title: string } | null>(null);
   // Counts the times a page or a mode was opened: each one starts a fresh editor.
   const [opened, setOpened] = useState(0);
   const [mode, setMode] = useState(loadMode);
@@ -215,6 +229,21 @@ export default function App({
     () => store.subscribe?.((changes) => takeChanges.current(changes)),
     [store],
   );
+  useEffect(
+    () =>
+      store.onFiles?.((files) => {
+        if (fresh.current) commit({ ...fresh.current, files });
+        setFilesVersion((n) => n + 1);
+      }),
+    [store],
+  );
+
+  // Links name the open page by its title as it was when the page was opened.
+  useEffect(() => {
+    const source = active ? fresh.current?.pages[active] : undefined;
+    if (!active || source === undefined || linked.current?.path === active) return;
+    linked.current = { path: active, title: readPage(source).title.trim() };
+  }, [active]);
 
   const tree = useMemo(() => (project ? buildTree(project) : []), [project]);
   // The presentations, each with what its slides are called.
@@ -257,7 +286,7 @@ export default function App({
    * typed. Returns the project as it is after that.
    */
   const syncFileName = (): Project | null => {
-    if (!project || !active || !page?.title.trim()) return project;
+    if (!project || !active || !page?.title.trim()) return retitleLinks(project);
     const wanted = freePath(
       project,
       parentOf(active),
@@ -265,13 +294,47 @@ export default function App({
       ".md",
       active,
     );
-    if (wanted === active) return project;
+    if (wanted === active) return retitleLinks(project);
     const renamed = renameIn(project, active, wanted);
     commit(renamed);
     setActive(wanted);
     saveOpenPage(wanted);
     void persist(store.rename(active, wanted));
-    return renamed;
+    return retitleLinks(renamed, wanted);
+  };
+
+  /**
+   * After the open page got another title or path: links in other pages
+   * that named it the old way name it the new way. Returns the project
+   * with those pages changed.
+   */
+  const retitleLinks = (current: Project | null, path = active): Project | null => {
+    const known = linked.current;
+    if (!current || !path || !known || !(path in current.pages)) return current;
+    const title = readPage(current.pages[path]).title.trim();
+    linked.current = { path, title };
+    // A new page had no title that links could name.
+    if (!known.title || (known.path === path && known.title === title)) return current;
+    // The pages as they were before: the page under its old path and title.
+    const before = { ...current.pages };
+    delete before[path];
+    before[known.path] = writePage({ ...readPage(current.pages[path]), title: known.title });
+    return relink(current, before, known.path, path);
+  };
+
+  /** Writes the pages whose links to a page that moved or got a new title must change. */
+  const relink = (
+    current: Project,
+    before: Record<string, string>,
+    from: string,
+    to: string,
+  ): Project => {
+    const writes = retargetLinks(before, current.pages, from, to);
+    if (!writes.length) return current;
+    const next = { ...current, pages: { ...current.pages, ...Object.fromEntries(writes) } };
+    commit(next);
+    for (const [file, text] of writes) void persist(store.writePage(file, text));
+    return next;
   };
 
   const open = (path: string, slide = 0) => {
@@ -337,10 +400,10 @@ export default function App({
     saveClosedFolders([...next]);
   };
 
-  const newPage = (folder: string, file = "") => {
+  const newPage = (folder: string, file = "", title = "") => {
     const current = syncFileName();
     if (!current) return;
-    const path = freePath(current, folder, "Untitled", ".md");
+    const path = freePath(current, folder, title ? fileNameFor(title) : "Untitled", ".md");
     commit({ ...current, pages: { ...current.pages, [path]: file } });
     setActive(path);
     setOpened((n) => n + 1);
@@ -352,7 +415,38 @@ export default function App({
     void persist(store.writePage(path, file));
     // A page's title is typed on the page, a presentation's in the sidebar.
     if (file === NEW_PRESENTATION) setRenaming(path);
+    else if (title) requestAnimationFrame(() => focusEditor.current?.());
     else requestAnimationFrame(() => titleInput.current?.focus());
+  };
+
+  /** Adds files to the project's attachments folder. Gives their paths, in the same order. */
+  const addFiles = async (files: File[]): Promise<string[]> => {
+    if (!store.writeFile) return [];
+    const paths: string[] = [];
+    for (const file of files) {
+      const current = fresh.current;
+      if (!current) break;
+      // A pasted picture has no name of its own.
+      const stamp = new Date().toISOString().slice(0, 19).replace("T", " ").replace(/:/g, ".");
+      const name = /^image\.\w+$/i.test(file.name)
+        ? `Pasted image ${stamp}${file.name.slice(file.name.lastIndexOf("."))}`
+        : file.name || `File ${stamp}`;
+      const path = freeFilePath(current, name);
+      try {
+        await store.writeFile(path, file);
+      } catch (error) {
+        setProblem(error instanceof Error ? error.message : String(error));
+        continue;
+      }
+      const latest = fresh.current ?? current;
+      commit({ ...latest, files: [...(latest.files ?? []), path].sort() });
+      paths.push(path);
+    }
+    if (paths.length) {
+      setFilesVersion((n) => n + 1);
+      setProblem(null);
+    }
+    return paths;
   };
 
   const newFolder = () => {
@@ -367,7 +461,19 @@ export default function App({
     if (!project) return;
     const wanted = freePath(project, parentOf(path), fileNameFor(name), "", path);
     if (wanted === path) return;
-    commit(renameIn(project, path, wanted));
+    let renamed = renameIn(project, path, wanted);
+    commit(renamed);
+    for (const page of Object.keys(project.pages)) {
+      if (page.startsWith(`${path}/`)) {
+        renamed = relink(renamed, project.pages, page, wanted + page.slice(path.length));
+      }
+    }
+    if (linked.current?.path.startsWith(`${path}/`)) {
+      linked.current = {
+        ...linked.current,
+        path: wanted + linked.current.path.slice(path.length),
+      };
+    }
     if (active?.startsWith(`${path}/`)) {
       const moved = wanted + active.slice(path.length);
       setActive(moved);
@@ -388,8 +494,11 @@ export default function App({
     const wanted = title.trim()
       ? freePath(titled, parentOf(path), fileNameFor(title), ".md", path)
       : path;
-    commit(wanted === path ? titled : renameIn(titled, path, wanted));
+    const renamed = wanted === path ? titled : renameIn(titled, path, wanted);
+    commit(renamed);
     if (wanted !== path) void persist(store.rename(path, wanted));
+    relink(renamed, project.pages, path, wanted);
+    if (path === active) linked.current = { path: wanted, title: title.trim() };
     if (path !== active) return;
     setOpened((n) => n + 1);
     if (wanted !== path) {
@@ -426,6 +535,16 @@ export default function App({
       moved = freePath(project, folder, baseName(path).replace(/\.md$/i, ""), ".md");
       next = renameIn(project, path, moved);
       void persist(store.rename(path, moved));
+      // Its images and links point where they did before.
+      const page = readPage(next.pages[moved]);
+      const markdown = rebaseLinks(page.markdown, parentOf(path), folder);
+      if (markdown !== page.markdown) {
+        const file = writePage({ ...page, markdown });
+        next = { ...next, pages: { ...next.pages, [moved]: file } };
+        void persist(store.writePage(moved, file));
+      }
+      next = relink(next, project.pages, path, moved);
+      if (linked.current?.path === path) linked.current = { ...linked.current, path: moved };
       if (folder) setFolderOpen(folder, true);
       if (active === path) {
         setActive(moved);
@@ -490,6 +609,49 @@ export default function App({
   useEffect(() => {
     document.title = title ? `${title} · Cursive` : "Cursive";
   }, [title]);
+
+  const pages = project?.pages;
+  const files = project?.files;
+  const pageList = useMemo(() => linkablePages({ name: "", folders: [], pages: pages ?? {} }), [pages]);
+  const index = useMemo(() => linkIndex(pages ?? {}), [pages]);
+  const linkedFrom = useMemo(
+    () => (pages && active && !isDeck ? backlinks(pages, active) : []),
+    [pages, active, isDeck],
+  );
+  const fileSet = useMemo(() => new Set(files ?? []), [files]);
+  const latestActions = useRef({ open, newPage, addFiles });
+  useEffect(() => {
+    latestActions.current = { open, newPage, addFiles };
+  });
+  const fileUrl = useMemo(
+    () => (path: string) => store.fileUrl?.(path) ?? Promise.resolve(null),
+    [store],
+  );
+  const workspace = useMemo<Workspace>(
+    () => ({
+      pages: pageList,
+      index,
+      active,
+      openPage: (path) => latestActions.current.open(path),
+      createPage: (title) =>
+        latestActions.current.newPage(
+          active ? parentOf(active) : "",
+          writePage({ title, properties: "", markdown: "" }),
+          title,
+        ),
+      files: fileSet,
+      filesVersion,
+      fileUrl,
+      openFile: (path) => {
+        void store.openFile?.(path).catch((error: unknown) =>
+          setProblem(error instanceof Error ? error.message : String(error)),
+        );
+      },
+      addFiles: (added) => latestActions.current.addFiles(added),
+      canAddFiles: Boolean(store.writeFile),
+    }),
+    [pageList, index, active, fileSet, filesVersion, fileUrl, store],
+  );
 
   if (!project) {
     return (
@@ -707,6 +869,7 @@ export default function App({
                 focusRef={focusEditor}
                 focusEndRef={focusEditorEnd}
               />
+              <Backlinks links={linkedFrom} />
             </article>
           ) : (
             <MarkdownEditor
@@ -768,13 +931,15 @@ export default function App({
   );
 
   return (
-    <ReferencesProvider
-      markdown={page?.markdown ?? ""}
-      page={active}
-      live
-      addElsewhere={addElsewhere}
-    >
-      {shell}
-    </ReferencesProvider>
+    <WorkspaceProvider value={workspace}>
+      <ReferencesProvider
+        markdown={page?.markdown ?? ""}
+        page={active}
+        live
+        addElsewhere={addElsewhere}
+      >
+        {shell}
+      </ReferencesProvider>
+    </WorkspaceProvider>
   );
 }

@@ -10,6 +10,9 @@ import {
   ClipboardList,
   Code,
   Columns2,
+  FileText,
+  Image,
+  Paperclip,
   Info,
   Layers,
   List,
@@ -25,6 +28,15 @@ import {
   TextCursorInput,
 } from "lucide-react";
 
+/**
+ * Asks the open editor to let the reader pick files from their
+ * computer: images, or files of any kind.
+ */
+function requestFiles(kind: "image" | "file"): boolean {
+  window.dispatchEvent(new CustomEvent("cursive:add-files", { detail: kind }));
+  return true;
+}
+
 /** A block the slash menu and the "Turn into" menu can make. */
 export interface BlockItem {
   id: string;
@@ -32,7 +44,7 @@ export interface BlockItem {
   description: string;
   /** Extra words the slash menu's filter matches. */
   keywords: string[];
-  group: "Basic blocks" | "More blocks" | "References" | "Tutorial blocks";
+  group: "Basic blocks" | "More blocks" | "Media" | "References" | "Tutorial blocks";
   /** The tile: a few letters or an icon. */
   glyph: string | LucideIcon;
   /** The block opens a field of its own, so the caret doesn't go back to the page. */
@@ -199,6 +211,38 @@ export const BLOCKS: BlockItem[] = [
     turnInto: true,
     isActive: (editor) => editor.isActive("orderedList"),
     run: (chain) => chain.clearNodes().toggleOrderedList(),
+  },
+  {
+    id: "page-link",
+    title: "Link to page",
+    description: "A link to another page of the project",
+    keywords: ["mention", "wiki", "backlink", "reference"],
+    group: "Basic blocks",
+    glyph: FileText,
+    turnInto: false,
+    run: (chain) => chain.insertContent("[["),
+  },
+  {
+    id: "image",
+    title: "Image",
+    description: "A picture from your computer",
+    keywords: ["picture", "photo", "figure", "img", "upload"],
+    group: "Media",
+    glyph: Image,
+    opensField: true,
+    turnInto: false,
+    run: (chain) => chain.command(() => requestFiles("image")),
+  },
+  {
+    id: "file",
+    title: "File",
+    description: "A file to open or download, such as a PDF",
+    keywords: ["attachment", "pdf", "upload", "document"],
+    group: "Media",
+    glyph: Paperclip,
+    opensField: true,
+    turnInto: false,
+    run: (chain) => chain.command(() => requestFiles("file")),
   },
   {
     id: "toggle",

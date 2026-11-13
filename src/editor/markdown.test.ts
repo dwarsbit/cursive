@@ -110,6 +110,17 @@ describe("Markdown round trip", () => {
       "```",
     ].join("\n"),
     "empty bibliography": "```bibliography\n```",
+    "link to a page": "See [[Pilot study]] for the plan.",
+    "link to a page with other words": "See [[Thesis/Pilot study|the pilot]] first.",
+    image: "![Scores per week](attachments/scores.png)",
+    "image with a title": '![Scores](../attachments/scores.png "Week 46")',
+    "image with a space in its name": "![](<attachments/my chart.png>)",
+    "image in the text": "The logo ![logo](logo.svg) is ours.",
+    "image with brackets in its description": "![Item [3] of the scale](attachments/item.png)",
+    "two images": "![One](a.png)\n\n![Two](b.png)",
+    "image from the web": "![A map](https://example.com/map.png)",
+    "attached file": "Read [Interview guide.pdf](attachments/Interview%20guide.pdf) first.",
+    "link to another page's file": "See [the pilot](Pilot%20study.md).",
   };
 
   for (const [name, markdown] of Object.entries(cases)) {
@@ -130,6 +141,33 @@ describe("Markdown round trip", () => {
     ]);
     expect(doc.content?.[0].attrs?.kind).toBe("note");
     expect(doc.content?.[1].attrs?.open).toBe(true);
+  });
+
+  it("reads images, files and page links as their own nodes", () => {
+    const doc = editorFor(
+      [cases.image, cases["attached file"], cases["link to a page with other words"]].join(
+        "\n\n",
+      ),
+    ).getJSON();
+    expect(
+      doc.content?.map((node) => [node.type, node.content?.map((inline) => inline.type)]),
+    ).toEqual([
+      ["image", undefined],
+      ["paragraph", ["text", "attachment", "text"]],
+      ["paragraph", ["text", "pageLink", "text"]],
+    ]);
+    expect(doc.content?.[0].attrs?.src).toBe("attachments/scores.png");
+    expect(editorFor(cases["image in the text"]).getJSON().content?.[0].content?.[1].type).toBe(
+      "inlineImage",
+    );
+    expect((doc.content?.[1].content?.[1] as { attrs?: unknown }).attrs).toEqual({
+      href: "attachments/Interview%20guide.pdf",
+      name: "Interview guide.pdf",
+    });
+    expect((doc.content?.[2].content?.[1] as { attrs?: unknown }).attrs).toEqual({
+      target: "Thesis/Pilot study",
+      label: "the pilot",
+    });
   });
 
   it("keeps a toggle inside a toggle", () => {

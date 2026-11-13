@@ -7,6 +7,7 @@ import {
   Plus,
   Presentation,
   Trash2,
+  Search,
 } from "lucide-react";
 import { createContext, useContext, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
@@ -79,6 +80,8 @@ export interface SidebarProps {
   /** Opens another project; only where the app can. */
   onSwitchProject?: () => void;
   switchLabel?: string;
+  /** Opens the search across the project's pages. */
+  onSearch?: () => void;
 }
 
 function RowButton({
@@ -616,6 +619,17 @@ export function Sidebar(props: SidebarProps) {
       </div>
 
       <div className="flex h-6 items-center justify-end gap-0.5 px-2 pt-1 pb-1 text-xs font-medium text-muted-foreground">
+        {props.onSearch && (
+          <button
+            type="button"
+            title="Search the project (Cmd/Ctrl + Shift + F)"
+            onClick={props.onSearch}
+            className="mr-auto inline-flex h-6 items-center gap-1.5 rounded-md px-1.5 hover:bg-accent hover:text-foreground"
+          >
+            <Search className="size-3.5" aria-hidden />
+            Search
+          </button>
+        )}
         <button
           type="button"
           aria-label="Add folder"

@@ -11,6 +11,8 @@ import { EditorState } from "@codemirror/state";
 import { drawSelection, EditorView, keymap } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef } from "react";
+import { offerFindTarget } from "@/lib/find";
+import { codeMirrorFindTarget, findField } from "@/lib/find-codemirror";
 
 // The words stay in the text color and the syntax around them is
 // muted, so the source reads like the page.
@@ -92,6 +94,7 @@ export function MarkdownEditor({
           yamlFrontmatter({ content: markdown({ base: markdownLanguage }) }),
           syntaxHighlighting(highlight),
           theme,
+          findField,
           keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
           EditorView.contentAttributes.of({
             "aria-label": "Page as Markdown",
@@ -104,7 +107,11 @@ export function MarkdownEditor({
       }),
     });
     view.focus();
-    return () => view.destroy();
+    const withdraw = offerFindTarget(codeMirrorFindTarget(view));
+    return () => {
+      withdraw();
+      view.destroy();
+    };
   }, []);
 
   return <div ref={host} className="source" />;

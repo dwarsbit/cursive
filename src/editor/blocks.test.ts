@@ -14,6 +14,7 @@ describe("filterBlocks", () => {
       "To-do list",
       "Toggle",
       "Table",
+      "Link to page",
       "Key terms",
       "Fill in the blanks",
       "Heading 1",
