@@ -277,6 +277,76 @@ export async function fetchZoteroItems(
   return items;
 }
 
+/** A collection in a library, with its parent collection's key. */
+export interface ZoteroCollection {
+  key: string;
+  name: string;
+  /** The key of the collection it sits in, or null at the top. */
+  parent: string | null;
+}
+
+/** Reads every page of a list: Zotero gives at most 100 entries at a time. */
+async function getAll(
+  library: ZoteroLibrary,
+  path: string,
+  query: URLSearchParams,
+): Promise<unknown[]> {
+  const all: unknown[] = [];
+  for (let start = 0; ; start += 100) {
+    const page = new URLSearchParams(query);
+    page.set("limit", "100");
+    page.set("start", String(start));
+    const payload = await get(library, path, page);
+    if (!Array.isArray(payload)) break;
+    all.push(...payload);
+    if (payload.length < 100) break;
+  }
+  return all;
+}
+
+/** Every collection of a library, sorted by name. */
+export async function listZoteroCollections(
+  library: ZoteroLibrary,
+): Promise<ZoteroCollection[]> {
+  const payload = await getAll(
+    library,
+    "collections",
+    new URLSearchParams({ format: "json" }),
+  );
+  return payload
+    .map((entry) => {
+      const data = (
+        entry as {
+          data?: { key?: string; name?: string; parentCollection?: string | false };
+        } | null
+      )?.data;
+      if (!data || typeof data.key !== "string") return null;
+      return {
+        key: data.key,
+        name: data.name ?? "",
+        parent:
+          typeof data.parentCollection === "string" ? data.parentCollection : null,
+      };
+    })
+    .filter((collection): collection is ZoteroCollection => collection !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** The works in a collection, without its subcollections. */
+export async function zoteroCollectionItems(
+  library: ZoteroLibrary,
+  collection: string,
+): Promise<ZoteroItem[]> {
+  if (!/^[A-Z0-9]+$/i.test(collection)) return [];
+  return toItems(
+    await getAll(
+      library,
+      `collections/${collection}/items/top`,
+      new URLSearchParams({ format: "json" }),
+    ),
+  );
+}
+
 /** The group libraries the source's user is a member of. */
 export async function listZoteroGroups(
   source: ZoteroSource,
