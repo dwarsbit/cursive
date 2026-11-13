@@ -1,9 +1,9 @@
 import type { Editor as TiptapEditor } from "@tiptap/core";
 import { Check, ChevronDown, LayoutTemplate, StickyNote } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Editor } from "@/components/Editor";
-import { cn } from "@/lib/cn";
-import { tidyMarkdown } from "@/lib/page-file";
+import { Editor } from "@cursive/editor/components/Editor";
+import { cn } from "@cursive/editor/lib/cn";
+import { tidyMarkdown } from "@cursive/editor/lib/page-file";
 import { LAYOUTS, splitBlocks, type Slide } from "./deck";
 import { SlideFrame } from "./SlideFrame";
 import type { Deck } from "./use-deck";

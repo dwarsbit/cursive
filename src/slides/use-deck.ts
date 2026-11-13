@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import type { Page } from "@/lib/page-file";
-import { inlineNumberedNotes } from "@/editor/footnote";
+import type { Page } from "@cursive/editor/lib/page-file";
+import { inlineNumberedNotes } from "@cursive/editor/editor/footnote";
 import { emptySlide, isPresentation, readDeck, writeDeck, type Slide } from "./deck";
 
 /** An open presentation: its slides, the one being worked on, and what changes them. */

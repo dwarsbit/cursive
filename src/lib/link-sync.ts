@@ -1,5 +1,5 @@
 import * as Y from "yjs";
-import { MAX_FILE_BYTES } from "./file-types";
+import { MAX_FILE_BYTES } from "@cursive/editor/lib/file-types";
 import {
   applyAssets,
   applyPages,

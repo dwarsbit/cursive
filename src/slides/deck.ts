@@ -1,5 +1,5 @@
 import type { JSONContent } from "@tiptap/core";
-import { withoutFootnotes } from "@/editor/footnote";
+import { withoutFootnotes } from "@cursive/editor/editor/footnote";
 
 /**
  * A presentation is a page whose front matter says `type: presentation`.

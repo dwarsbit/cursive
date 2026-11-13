@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { findLinks, linkIndex } from "@/lib/links";
-import { readPage } from "@/lib/page-file";
-import { citedKeys, pageReferences } from "@/references/reference";
+import { findLinks, linkIndex } from "@cursive/editor/lib/links";
+import { readPage } from "@cursive/editor/lib/page-file";
+import { citedKeys, pageReferences } from "@cursive/editor/references/reference";
 import { isPresentation, readDeck } from "@/slides/deck";
-import { readAssignment, readQuiz } from "@/tutorial/blocks";
+import { readAssignment, readQuiz } from "@cursive/editor/tutorial/blocks";
 import { TEMPLATES, templatePages } from "./index";
 
 const fences = (markdown: string, name: string) =>

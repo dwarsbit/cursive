@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { BUTTON, Dialog, messageOf, PRIMARY_BUTTON, QUIET_BUTTON } from "./Dialog";
+import { BUTTON, Dialog, messageOf, PRIMARY_BUTTON, QUIET_BUTTON } from "@cursive/editor/components/Dialog";
 import { LearnersDialog } from "./LearnersDialog";
-import { cn } from "@/lib/cn";
+import { cn } from "@cursive/editor/lib/cn";
 import type { SaveFile, Server, SiteState } from "@/lib/server";
 import {
   SITE_THEMES,

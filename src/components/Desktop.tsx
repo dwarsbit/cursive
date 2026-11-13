@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import App, { type Status } from "@/App";
 import { AccountDialog, type AccountAsk } from "@/components/AccountDialog";
 import { AccountMenu } from "@/components/AccountMenu";
-import { HEADER_BUTTON } from "@/components/Dialog";
+import { HEADER_BUTTON } from "@cursive/editor/components/Dialog";
 import { ProjectPicker } from "@/components/ProjectPicker";
 import { PublishDialog } from "@/components/PublishDialog";
 import { desktopStore } from "@/lib/desktop-store";
@@ -14,7 +14,7 @@ import {
   type Link,
   type SyncState,
 } from "@/lib/link-sync";
-import { hasWindowButtons } from "@/lib/platform";
+import { hasWindowButtons } from "@cursive/editor/lib/platform";
 import { forgetFolder, loadFolder, saveFolder } from "@/lib/prefs";
 import type { ProjectStore } from "@/lib/project";
 import {

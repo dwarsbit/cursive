@@ -7,12 +7,12 @@ import {
   type ReactNodeViewProps,
 } from "@tiptap/react";
 import { useState } from "react";
-import { Footnotes } from "@/components/Footnotes";
-import { withPageViews } from "@/components/MediaViews";
-import { withReferenceViews } from "@/components/ReferenceViews";
-import { points } from "@/components/TutorialViews";
-import { documentExtensions } from "@/editor/extensions";
-import { inlineNumberedNotes } from "@/editor/footnote";
+import { Footnotes } from "@cursive/editor/components/Footnotes";
+import { withPageViews } from "@cursive/editor/components/MediaViews";
+import { withReferenceViews } from "@cursive/editor/components/ReferenceViews";
+import { points } from "@cursive/editor/components/TutorialViews";
+import { documentExtensions } from "@cursive/editor/editor/extensions";
+import { inlineNumberedNotes } from "@cursive/editor/editor/footnote";
 import {
   readAssignment,
   readBlanks,
@@ -26,7 +26,7 @@ import {
   readVideo,
   splitBlanks,
   type TutorialKind,
-} from "@/tutorial/blocks";
+} from "@cursive/editor/tutorial/blocks";
 
 /**
  * The tutorial blocks on paper: what a reader of the published page

@@ -1,9 +1,9 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import { memo, useEffect, useRef, useState } from "react";
-import { Footnotes } from "@/components/Footnotes";
-import { withPageViews } from "@/components/MediaViews";
-import { withReferenceViews } from "@/components/ReferenceViews";
-import { documentExtensions } from "@/editor/extensions";
+import { Footnotes } from "@cursive/editor/components/Footnotes";
+import { withPageViews } from "@cursive/editor/components/MediaViews";
+import { withReferenceViews } from "@cursive/editor/components/ReferenceViews";
+import { documentExtensions } from "@cursive/editor/editor/extensions";
 import type { Slide } from "./deck";
 import { SlideFrame } from "./SlideFrame";
 

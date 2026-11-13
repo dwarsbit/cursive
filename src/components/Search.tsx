@@ -8,10 +8,10 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { findTarget, onFindTarget, type FindQuery, type FindState } from "@/lib/find";
+import { findTarget, onFindTarget, type FindQuery, type FindState } from "@cursive/editor/lib/find";
 import { parentOf } from "@/lib/project";
-import { searchProject, type SearchResult } from "@/lib/search";
-import { cn } from "@/lib/cn";
+import { searchProject, type SearchResult } from "@cursive/editor/lib/search";
+import { cn } from "@cursive/editor/lib/cn";
 
 /**
  * Search across the project's pages: titles and text, case and accents

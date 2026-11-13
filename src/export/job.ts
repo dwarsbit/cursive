@@ -1,6 +1,6 @@
-import { styleOfProperties } from "@/references/styles";
-import { inlineNumberedNotes } from "@/editor/footnote";
-import { readPage } from "@/lib/page-file";
+import { styleOfProperties } from "@cursive/editor/references/styles";
+import { inlineNumberedNotes } from "@cursive/editor/editor/footnote";
+import { readPage } from "@cursive/editor/lib/page-file";
 import { buildTree, pageLabel, type Project, type TreeNode } from "@/lib/project";
 import { isPresentation, readDeck, type Slide } from "@/slides/deck";
 

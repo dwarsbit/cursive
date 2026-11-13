@@ -9,6 +9,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 RUN npm install --global pnpm@12.6.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/editor/package.json packages/editor/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 RUN pnpm build:web

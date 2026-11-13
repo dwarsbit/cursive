@@ -10,12 +10,12 @@ import {
   Search,
 } from "lucide-react";
 import { createContext, useContext, useRef, useState } from "react";
-import { cn } from "@/lib/cn";
-import { dragWindow } from "@/lib/platform";
-import { scrollNearEdge, startPointerDrag } from "@/lib/pointer-drag";
+import { cn } from "@cursive/editor/lib/cn";
+import { dragWindow } from "@cursive/editor/lib/platform";
+import { scrollNearEdge, startPointerDrag } from "@cursive/editor/lib/pointer-drag";
 import { countPages, parentOf, type TreeNode } from "@/lib/project";
-import { ContextMenu, type MenuAt, type MenuEntry } from "./ContextMenu";
-import { messageOf } from "./Dialog";
+import { ContextMenu, type MenuAt, type MenuEntry } from "@cursive/editor/components/ContextMenu";
+import { messageOf } from "@cursive/editor/components/Dialog";
 import { Mark } from "./Mark";
 
 /** Where a dragged row lands: before or after a row, or into a folder. */

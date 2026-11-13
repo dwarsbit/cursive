@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isDesktop } from "@/lib/desktop-store";
-import { cn } from "@/lib/cn";
+import { cn } from "@cursive/editor/lib/cn";
 import {
   keepBibText,
   readBibFile,
@@ -21,14 +21,14 @@ import {
   sourceName,
   useSources,
   type BibSource,
-} from "@/references/sources";
+} from "@cursive/editor/references/sources";
 import {
   checkZoteroKey,
   listZoteroGroups,
   zoteroAppAnswers,
   type ZoteroSource,
-} from "@/references/zotero";
-import { BUTTON, Dialog, PRIMARY_BUTTON, QUIET_BUTTON } from "./Dialog";
+} from "@cursive/editor/references/zotero";
+import { BUTTON, Dialog, PRIMARY_BUTTON, QUIET_BUTTON } from "@cursive/editor/components/Dialog";
 
 type Status = "checking" | "ok" | "error" | "off";
 

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { cn } from "@/lib/cn";
+import { cn } from "@cursive/editor/lib/cn";
 import type { Slide } from "./deck";
 
 /** A slide is laid out at this size and scaled to whatever shows it. */
