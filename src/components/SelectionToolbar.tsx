@@ -1,7 +1,15 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { Check, ChevronDown, Code, Highlighter, Link, Unlink } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Code,
+  Highlighter,
+  Link,
+  Superscript,
+  Unlink,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { BLOCKS, currentBlock } from "@/editor/blocks";
 import { cn } from "@/lib/cn";
@@ -191,6 +199,12 @@ export function SelectionToolbar({
             </ToolButton>
             <ToolButton label="Link" active={state.link} onClick={openLink}>
               <Link className="size-3.5" />
+            </ToolButton>
+            <ToolButton
+              label="Footnote"
+              onClick={() => editor.chain().focus().insertFootnote().run()}
+            >
+              <Superscript className="size-3.5" />
             </ToolButton>
           </>
         )}

@@ -34,6 +34,7 @@ const EXPECTED: Record<string, string> = {
   code: "codeBlock",
   equation: "blockMath",
   divider: "horizontalRule",
+  footnote: "paragraph",
   citation: "paragraph",
   bibliography: "bibliography",
   goals: "goals",

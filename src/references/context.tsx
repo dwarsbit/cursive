@@ -180,3 +180,19 @@ export function ReferencesProvider({
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
+
+/**
+ * For an editor inside the page that holds no references of its own,
+ * such as a footnote's field: works cited there are added with `add`.
+ */
+export function ReferencesElsewhere({
+  add,
+  children,
+}: {
+  add: (ref: Reference) => void;
+  children: React.ReactNode;
+}) {
+  const outer = useContext(Context);
+  const value = useMemo(() => ({ ...outer, addElsewhere: add }), [outer, add]);
+  return <Context.Provider value={value}>{children}</Context.Provider>;
+}

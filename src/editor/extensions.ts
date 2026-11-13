@@ -8,6 +8,7 @@ import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 import { common, createLowlight } from "lowlight";
 import { Callout } from "./callout";
+import { Footnote } from "./footnote";
 import { Toggle, ToggleContent, ToggleSummary } from "./toggle";
 import { Bibliography, Citation } from "@/references/nodes";
 import { TUTORIAL_NODES } from "@/tutorial/nodes";
@@ -20,7 +21,11 @@ export const lowlight = createLowlight(common);
  * slash menu, placeholders, node views) is added by the editor.
  */
 export function documentExtensions(
-  overrides: { codeBlock?: AnyExtension; mathematics?: AnyExtension } = {},
+  overrides: {
+    codeBlock?: AnyExtension;
+    mathematics?: AnyExtension;
+    footnote?: AnyExtension;
+  } = {},
 ): AnyExtension[] {
   return [
     StarterKit.configure({
@@ -42,6 +47,7 @@ export function documentExtensions(
     ...TUTORIAL_NODES,
     Citation,
     Bibliography,
+    overrides.footnote ?? Footnote,
     Markdown,
   ];
 }

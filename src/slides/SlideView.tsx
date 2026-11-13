@@ -1,5 +1,6 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import { memo, useEffect, useRef, useState } from "react";
+import { Footnotes } from "@/components/Footnotes";
 import { withReferenceViews } from "@/components/ReferenceViews";
 import { documentExtensions } from "@/editor/extensions";
 import type { Slide } from "./deck";
@@ -44,6 +45,7 @@ export const SlideView = memo(function SlideView({
       onOver={onOver}
     >
       <EditorContent editor={editor} />
+      <Footnotes editor={editor} />
     </SlideFrame>
   );
 });

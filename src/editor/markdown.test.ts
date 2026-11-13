@@ -85,6 +85,11 @@ describe("Markdown round trip", () => {
       "```exercise\nid: e1\nprompt: Rewrite “Do you exercise regularly?”\nhint: What counts as regularly?\nanswer: In the past seven days, on how many days did you exercise?\n```",
     flashcards:
       "```flashcards\ncards:\n  - front: Recall period\n    back: The stretch of time a question asks about.\n```",
+    footnote: "The sample was small.^[Twelve students.] A larger study is planned.",
+    "footnote with formatting":
+      "Small.^[See **the plan** at [the site](https://example.com), $n = 12$ and `x[0]`.]",
+    "footnote with a citation": "Small.^[Twelve students, see [@lee2020, p. 4].]",
+    "two footnotes": "One.^[First.] Two.^[Second.]",
     citation: "Attention is enough [@vaswani2017].",
     "citation with pages and two works":
       "As shown before [@vaswani2017, p. 4; @lee2020, pp. 2–3], it holds.",
@@ -206,6 +211,43 @@ describe("Markdown round trip", () => {
       const doc = editorFor(markdown).getJSON();
       expect(JSON.stringify(doc)).not.toContain('"citation"');
     }
+  });
+
+  it("reads a footnote as one node that carries its note", () => {
+    const doc = editorFor(cases["footnote with a citation"]).getJSON();
+    const note = doc.content?.[0].content?.find((node) => node.type === "footnote");
+    expect((note as { attrs?: Record<string, unknown> } | undefined)?.attrs).toEqual({
+      text: "Twelve students, see [@lee2020, p. 4].",
+    });
+  });
+
+  it("keeps a caret and a bracket that aren't a footnote as they are", () => {
+    for (const text of ["An open ^[note", "Empty ^[] note", "x^2 and [1]"]) {
+      const doc = editorFor(text).getJSON();
+      expect(JSON.stringify(doc)).not.toContain('"footnote"');
+    }
+  });
+
+  it("turns a typed footnote into the node on the closing bracket", () => {
+    const editor = editorFor("Small.");
+    editor.commands.focus("end");
+    const type = (text: string) => {
+      const { from, to } = editor.state.selection;
+      const handled = editor.view.someProp("handleTextInput", (handle) =>
+        handle(editor.view, from, to, text, () => editor.state.tr.insertText(text)),
+      );
+      if (!handled) editor.view.dispatch(editor.state.tr.insertText(text, from, to));
+    };
+    for (const ch of "^[A note]") type(ch);
+    expect(editor.getMarkdown().trim()).toBe("Small.^[A note]");
+  });
+
+  it("adds an empty footnote after the selection and leaves no trace of it", () => {
+    const editor = editorFor("Small.");
+    editor.commands.focus("end");
+    expect(editor.commands.insertFootnote()).toBe(true);
+    expect(JSON.stringify(editor.getJSON())).toContain('"footnote"');
+    expect(editor.getMarkdown().trim()).toBe("Small.");
   });
 
   it("reads a quote that is not a callout as a quote", () => {

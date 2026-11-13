@@ -90,6 +90,49 @@ export function insertCitation(
     elsewhere(ref);
 }
 
+/**
+ * Puts a work in the page's references without citing it here: in the
+ * bibliography block of this editor, or where `elsewhere` keeps them,
+ * or in a new bibliography at the end.
+ */
+export function addReference(
+  editor: Editor,
+  ref: Reference,
+  elsewhere?: (ref: Reference) => void,
+): void {
+  let found = -1;
+  editor.state.doc.descendants((node, pos) => {
+    if (found >= 0) return false;
+    if (node.type.name === "bibliography") found = pos;
+    return node.isBlock;
+  });
+  if (found < 0 && elsewhere) {
+    elsewhere(ref);
+    return;
+  }
+  editor
+    .chain()
+    .command(({ tr }) => {
+      if (found < 0) {
+        const type = tr.doc.type.schema.nodes.bibliography;
+        tr.insert(
+          tr.doc.content.size,
+          type.create({ source: writeBibliography([ref]) }),
+        );
+        return true;
+      }
+      const node = tr.doc.nodeAt(found)!;
+      const refs = readBibliography(node.attrs.source as string) ?? [];
+      if (refs.some((other) => other.key === ref.key)) return true;
+      tr.setNodeMarkup(found, undefined, {
+        ...node.attrs,
+        source: writeBibliography(putReference(refs, ref)),
+      });
+      return true;
+    })
+    .run();
+}
+
 export const bibliographyFence = (refs: Reference[]) =>
   toBibliographyFence(writeBibliography(refs));
 

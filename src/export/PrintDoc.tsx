@@ -7,9 +7,11 @@ import {
   type ReactNodeViewProps,
 } from "@tiptap/react";
 import { useState } from "react";
+import { Footnotes } from "@/components/Footnotes";
 import { withReferenceViews } from "@/components/ReferenceViews";
 import { points } from "@/components/TutorialViews";
 import { documentExtensions } from "@/editor/extensions";
+import { inlineNumberedNotes } from "@/editor/footnote";
 import {
   readAssignment,
   readBlanks,
@@ -271,10 +273,15 @@ export function PrintDoc({ markdown }: { markdown: string }) {
   const [extensions] = useState(printExtensions);
   const editor = useEditor({
     extensions,
-    content: markdown,
+    content: inlineNumberedNotes(markdown),
     contentType: "markdown",
     editable: false,
     editorProps: { attributes: { class: "doc" } },
   });
-  return <EditorContent editor={editor} />;
+  return (
+    <>
+      <EditorContent editor={editor} />
+      <Footnotes editor={editor} />
+    </>
+  );
 }

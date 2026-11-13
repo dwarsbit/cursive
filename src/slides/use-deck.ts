@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Page } from "@/lib/page-file";
+import { inlineNumberedNotes } from "@/editor/footnote";
 import { emptySlide, isPresentation, readDeck, writeDeck, type Slide } from "./deck";
 
 /** An open presentation: its slides, the one being worked on, and what changes them. */
@@ -39,7 +40,7 @@ export function useDeck(
 ): Deck | null {
   const on = page !== null && isPresentation(page);
   const markdown = on ? page.markdown : "";
-  const slides = useMemo(() => readDeck(markdown), [markdown]);
+  const slides = useMemo(() => readDeck(inlineNumberedNotes(markdown)), [markdown]);
   const [index, setIndex] = useState(0);
   const [stamp, setStamp] = useState(0);
   const [focused, setFocused] = useState(-1);

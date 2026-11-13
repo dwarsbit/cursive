@@ -84,6 +84,7 @@ export function plainText(markdown: string): string {
   return markdown
     .replace(/^(`{3,})bibliography[ \t]*\n[\s\S]*?\n?\1[ \t]*$/gm, " ")
     .replace(/\[@[^\]\n]+\]/g, " ")
+    .replace(/\^\[/g, " ")
     .replace(/^```.*$/gm, " ")
     .replace(/\$\$[\s\S]*?\$\$/g, " ")
     .replace(/\$[^$\n]+\$/g, " ")

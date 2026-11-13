@@ -1,3 +1,4 @@
+import { inlineNumberedNotes } from "@/editor/footnote";
 import { readPage } from "@/lib/page-file";
 import { buildTree, pageLabel, type Project, type TreeNode } from "@/lib/project";
 import { isPresentation, readDeck, type Slide } from "@/slides/deck";
@@ -43,7 +44,12 @@ function part(path: string, source: string): Part {
   const page = readPage(source);
   const title = pageLabel(path, source);
   return isPresentation(page)
-    ? { kind: "slides", path, title, slides: readDeck(page.markdown) }
+    ? {
+        kind: "slides",
+        path,
+        title,
+        slides: readDeck(inlineNumberedNotes(page.markdown)),
+      }
     : { kind: "page", path, title, markdown: page.markdown };
 }
 
