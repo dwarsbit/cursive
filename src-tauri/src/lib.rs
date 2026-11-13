@@ -53,6 +53,7 @@ pub fn run() {
             zotero::zotero_key_get,
             zotero::zotero_key_set,
             zotero::zotero_key_delete,
+            zotero::bibtex_read,
             print_window,
         ])
         .run(tauri::generate_context!())

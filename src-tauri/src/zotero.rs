@@ -102,9 +102,51 @@ pub fn zotero_key_delete(id: String) -> Result<(), String> {
     }
 }
 
+/// The most a BibTeX file may hold: far more than any library exports.
+const BIB_LIMIT: u64 = 32 * 1024 * 1024;
+
+/// Whether a path names a BibTeX file, by its extension.
+fn is_bib(path: &std::path::Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("bib"))
+}
+
+/// The text of a BibTeX file the reader picked in Settings. It is read
+/// again on each search, so a file a reference manager keeps exporting
+/// stays current. Only `.bib` files are read.
+#[tauri::command]
+pub fn bibtex_read(path: String) -> Result<String, String> {
+    let path = std::path::PathBuf::from(path);
+    if !path.is_absolute() || !is_bib(&path) {
+        return Err("Only a .bib file can be read.".into());
+    }
+    let meta = std::fs::metadata(&path)
+        .map_err(|_| format!("{} is gone. Pick the file again in Settings.", path.display()))?;
+    if !meta.is_file() || meta.len() > BIB_LIMIT {
+        return Err("This file is too large to read.".into());
+    }
+    let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_only_bib_files() {
+        let dir = std::env::temp_dir().join(format!("cursive-bib-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let bib = dir.join("library.bib");
+        std::fs::write(&bib, "@book{a, title = {A}}").unwrap();
+        let other = dir.join("notes.txt");
+        std::fs::write(&other, "secret").unwrap();
+        assert_eq!(bibtex_read(bib.display().to_string()).unwrap(), "@book{a, title = {A}}");
+        assert!(bibtex_read(other.display().to_string()).is_err());
+        assert!(bibtex_read("library.bib".into()).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn parses_status_and_body() {

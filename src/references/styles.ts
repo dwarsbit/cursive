@@ -28,7 +28,11 @@ export interface CitationStyle {
   numeric: boolean;
   entry(ref: Reference): Run[];
   /** A citation in the text. `numbers` gives each cited key its number, in a numbered style. */
-  citation(items: CiteItem[], refs: Map<string, Reference>, numbers: Map<string, number>): string;
+  citation(
+    items: CiteItem[],
+    refs: Map<string, Reference>,
+    numbers: Map<string, number>,
+  ): string;
 }
 
 // ---------- Names ----------
@@ -43,7 +47,11 @@ interface Name {
 function parseName(name: string): Name {
   const at = name.indexOf(",");
   if (at < 0) return { family: name.trim(), given: "", literal: true };
-  return { family: name.slice(0, at).trim(), given: name.slice(at + 1).trim(), literal: false };
+  return {
+    family: name.slice(0, at).trim(),
+    given: name.slice(at + 1).trim(),
+    literal: false,
+  };
 }
 
 /** "Jean-Paul Erik" as "J.-P. E." (with `dots`) or "JPE" (without, as Vancouver writes them). */
@@ -63,7 +71,12 @@ function joinNames(names: string[], and: string, serial: boolean): string {
 }
 
 /** The family names a citation shows: "Vaswani", "Lee and Kim", "Vaswani et al.". */
-function citedFamilies(ref: Reference, and: string, serial: boolean, upTo: number): string {
+function citedFamilies(
+  ref: Reference,
+  and: string,
+  serial: boolean,
+  upTo: number,
+): string {
   const people = ref.author.length ? ref.author : ref.editor;
   const families = people.map(familyName).filter(Boolean);
   if (families.length === 0) {
@@ -80,7 +93,8 @@ const standsAlone = (ref: Reference) =>
   ["book", "report", "thesis", "webpage", "other"].includes(ref.type);
 
 /** A text with a full stop, unless it ends in a mark already. */
-const stop = (text: string) => (/[.?!]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
+const stop = (text: string) =>
+  /[.?!]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`;
 
 const pagesOf = (ref: Reference) => ref.pages.replace(/--?/g, "–");
 
@@ -158,12 +172,17 @@ function chicagoNames(names: string[]): string {
   );
   if (parsed.length > 10) return `${written.join(", ")}, et al.`;
   // The first name is turned around, so a comma follows it: "Lee, Kim, and Ji-woo Park".
-  if (written.length === 2) return `${written[0]}${parsed[0]!.literal ? "" : ","} and ${written[1]}`;
+  if (written.length === 2)
+    return `${written[0]}${parsed[0]!.literal ? "" : ","} and ${written[1]}`;
   return joinNames(written, "and", true);
 }
 
 const directNames = (names: string[]) =>
-  names.map(parseName).map((name) => (name.literal || !name.given ? name.family : `${name.given} ${name.family}`));
+  names
+    .map(parseName)
+    .map((name) =>
+      name.literal || !name.given ? name.family : `${name.given} ${name.family}`,
+    );
 
 const chicago: CitationStyle = {
   id: "chicago-author-date",
@@ -178,7 +197,8 @@ const chicago: CitationStyle = {
     const title = ref.title.trim();
     const titled = () => {
       if (!title) return;
-      if (standsAlone(ref) && ref.type !== "thesis") out.italic(title).text(/[.?!]$/.test(title) ? " " : ". ");
+      if (standsAlone(ref) && ref.type !== "thesis")
+        out.italic(title).text(/[.?!]$/.test(title) ? " " : ". ");
       else out.text(`“${stop(title)}” `);
     };
     if (who) {
@@ -210,10 +230,15 @@ const chicago: CitationStyle = {
         if (publisher) out.text(`${stop(publisher)} `);
         break;
       case "thesis":
-        out.text(`${stop([ref.genre || "PhD diss.", ref.publisher].filter(Boolean).join(", "))} `);
+        out.text(
+          `${stop([ref.genre || "PhD diss.", ref.publisher].filter(Boolean).join(", "))} `,
+        );
         break;
       case "report":
-        if (ref.genre) out.text(`${stop(/^report/i.test(ref.genre) ? ref.genre : `Report ${ref.genre}`)} `);
+        if (ref.genre)
+          out.text(
+            `${stop(/^report/i.test(ref.genre) ? ref.genre : `Report ${ref.genre}`)} `,
+          );
         if (publisher) out.text(`${stop(publisher)} `);
         break;
       case "webpage":
@@ -242,7 +267,8 @@ function mlaNames(names: string[]): string {
   const parsed = names.map(parseName);
   const first = parsed[0];
   if (!first) return "";
-  const head = first.literal || !first.given ? first.family : `${first.family}, ${first.given}`;
+  const head =
+    first.literal || !first.given ? first.family : `${first.family}, ${first.given}`;
   if (parsed.length === 1) return head;
   if (parsed.length === 2) {
     const second = parsed[1]!;
@@ -265,7 +291,8 @@ const mla: CitationStyle = {
     if (who) out.text(`${stop(who)} `);
     const title = ref.title.trim();
     if (title) {
-      if (standsAlone(ref) && ref.type !== "webpage") out.italic(title).text(/[.?!]$/.test(title) ? " " : ". ");
+      if (standsAlone(ref) && ref.type !== "webpage")
+        out.italic(title).text(/[.?!]$/.test(title) ? " " : ". ");
       else out.text(`“${stop(title)}” `);
     }
     // The container, then what places the work in it, in MLA's order, between commas.
@@ -275,12 +302,22 @@ const mla: CitationStyle = {
       if (kept.length) parts.push(kept);
     };
     const pages = pagesOf(ref);
-    if (ref.container && ref.type !== "thesis" && ref.container !== who) part({ text: ref.container, italic: true });
-    if (ref.editor.length && ref.author.length && ["chapter", "conference"].includes(ref.type))
+    if (ref.container && ref.type !== "thesis" && ref.container !== who)
+      part({ text: ref.container, italic: true });
+    if (
+      ref.editor.length &&
+      ref.author.length &&
+      ["chapter", "conference"].includes(ref.type)
+    )
       part({ text: `edited by ${joinNames(directNames(ref.editor), "and", false)}` });
     if (ref.volume) part({ text: `vol. ${ref.volume}` });
     if (ref.issue) part({ text: `no. ${ref.issue}` });
-    if (ref.publisher && ref.type !== "article" && ref.type !== "thesis" && ref.publisher !== who)
+    if (
+      ref.publisher &&
+      ref.type !== "article" &&
+      ref.type !== "thesis" &&
+      ref.publisher !== who
+    )
       part({ text: ref.publisher });
     if (ref.type === "thesis") {
       // A thesis: its year stands alone, then where and what it is.
@@ -313,9 +350,13 @@ const mla: CitationStyle = {
 // ---------- IEEE ----------
 
 function ieeeNames(names: string[]): string {
-  const written = names.map(parseName).map((name) =>
-    name.literal || !name.given ? name.family : `${initialsOf(name.given)} ${name.family}`,
-  );
+  const written = names
+    .map(parseName)
+    .map((name) =>
+      name.literal || !name.given
+        ? name.family
+        : `${initialsOf(name.given)} ${name.family}`,
+    );
   if (written.length > 6) return `${written[0]} et al.`;
   return joinNames(written, "and", true);
 }
@@ -326,7 +367,11 @@ const ieee: CitationStyle = {
   numeric: true,
   entry(ref) {
     const out = new Entry();
-    const who = ieeeNames(ref.author) || (ref.editor.length ? `${ieeeNames(ref.editor)}, ${ref.editor.length > 1 ? "Eds." : "Ed."}` : "");
+    const who =
+      ieeeNames(ref.author) ||
+      (ref.editor.length
+        ? `${ieeeNames(ref.editor)}, ${ref.editor.length > 1 ? "Eds." : "Ed."}`
+        : "");
     if (who) out.text(`${who}, `);
     const title = ref.title.trim();
     const pages = pagesOf(ref);
@@ -345,7 +390,10 @@ const ieee: CitationStyle = {
       case "conference":
         out.text(`“${title},” in `);
         if (ref.container) out.italic(ref.container);
-        if (ref.editor.length && ref.author.length) tail.push(`${ieeeNames(ref.editor)}, ${ref.editor.length > 1 ? "Eds." : "Ed."}`);
+        if (ref.editor.length && ref.author.length)
+          tail.push(
+            `${ieeeNames(ref.editor)}, ${ref.editor.length > 1 ? "Eds." : "Ed."}`,
+          );
         if (publisher) tail.push(publisher);
         if (ref.year) tail.push(ref.year);
         if (pages) tail.push(`${/[–,-]/.test(pages) ? "pp." : "p."} ${pages}`);
@@ -359,7 +407,8 @@ const ieee: CitationStyle = {
       case "report":
         out.text(`“${title},” `).text(ref.publisher || "");
         if (ref.place) tail.push(ref.place);
-        if (ref.genre) tail.push(/^rep/i.test(ref.genre) ? ref.genre : `Rep. ${ref.genre}`);
+        if (ref.genre)
+          tail.push(/^rep/i.test(ref.genre) ? ref.genre : `Rep. ${ref.genre}`);
         if (ref.year) tail.push(ref.year);
         break;
       case "webpage":
@@ -383,9 +432,13 @@ const ieee: CitationStyle = {
 // ---------- Harvard (Cite Them Right, 12th edition) ----------
 
 function harvardNames(names: string[]): string {
-  const written = names.map(parseName).map((name) =>
-    name.literal || !name.given ? name.family : `${name.family}, ${initialsOf(name.given).replace(/\. /g, ".")}`,
-  );
+  const written = names
+    .map(parseName)
+    .map((name) =>
+      name.literal || !name.given
+        ? name.family
+        : `${name.family}, ${initialsOf(name.given).replace(/\. /g, ".")}`,
+    );
   return joinNames(written, "and", false);
 }
 
@@ -396,7 +449,8 @@ const harvard: CitationStyle = {
   entry(ref) {
     const out = new Entry();
     let who = harvardNames(ref.author);
-    if (!who && ref.editor.length) who = `${harvardNames(ref.editor)} (${ref.editor.length > 1 ? "eds." : "ed."})`;
+    if (!who && ref.editor.length)
+      who = `${harvardNames(ref.editor)} (${ref.editor.length > 1 ? "eds." : "ed."})`;
     const year = ref.year ? `(${ref.year})` : "(no date)";
     const title = ref.title.trim();
     const pages = pagesOf(ref);
@@ -418,7 +472,10 @@ const harvard: CitationStyle = {
         if (!who) out.text(` ${year}`);
         if (ref.container) {
           out.text(", in ");
-          if (ref.editor.length && ref.author.length) out.text(`${harvardNames(ref.editor)} (${ref.editor.length > 1 ? "eds." : "ed."}) `);
+          if (ref.editor.length && ref.author.length)
+            out.text(
+              `${harvardNames(ref.editor)} (${ref.editor.length > 1 ? "eds." : "ed."}) `,
+            );
           out.italic(ref.container);
         }
         if (publisher) out.text(`. ${publisher}`);
@@ -429,10 +486,14 @@ const harvard: CitationStyle = {
         out.italic(title);
         if (!who) out.text(` ${year}`);
         out.text(".");
-        if (ref.type === "thesis") out.text(` ${stop(ref.genre || "PhD thesis")}${ref.publisher ? ` ${stop(ref.publisher)}` : ""}`);
+        if (ref.type === "thesis")
+          out.text(
+            ` ${stop(ref.genre || "PhD thesis")}${ref.publisher ? ` ${stop(ref.publisher)}` : ""}`,
+          );
         else if (ref.type === "report" && ref.genre) out.text(` ${stop(ref.genre)}`);
         if (ref.type === "webpage") {
-          if (ref.container && ref.container !== who) out.text(` ${stop(ref.container)}`);
+          if (ref.container && ref.container !== who)
+            out.text(` ${stop(ref.container)}`);
         } else if (ref.type !== "thesis" && publisher) out.text(` ${stop(publisher)}`);
       }
     }
@@ -442,7 +503,9 @@ const harvard: CitationStyle = {
   },
   citation(items, refs) {
     const parts = citationOf(items, refs, (ref, item) =>
-      [citedFamilies(ref, "and", false, 3), ref.year || "no date", item.locator].filter(Boolean).join(", "),
+      [citedFamilies(ref, "and", false, 3), ref.year || "no date", item.locator]
+        .filter(Boolean)
+        .join(", "),
     );
     return `(${parts.join("; ")})`;
   },
@@ -451,9 +514,13 @@ const harvard: CitationStyle = {
 // ---------- Vancouver (NLM) ----------
 
 function vancouverNames(names: string[]): string {
-  const written = names.map(parseName).map((name) =>
-    name.literal || !name.given ? name.family : `${name.family} ${initialsOf(name.given, false)}`,
-  );
+  const written = names
+    .map(parseName)
+    .map((name) =>
+      name.literal || !name.given
+        ? name.family
+        : `${name.family} ${initialsOf(name.given, false)}`,
+    );
   if (written.length > 6) return `${written.slice(0, 6).join(", ")}, et al`;
   return written.join(", ");
 }
@@ -465,7 +532,9 @@ const vancouver: CitationStyle = {
   entry(ref) {
     const out = new Entry();
     const authors = vancouverNames(ref.author);
-    const editors = ref.editor.length ? `${vancouverNames(ref.editor)}, ${ref.editor.length > 1 ? "editors" : "editor"}` : "";
+    const editors = ref.editor.length
+      ? `${vancouverNames(ref.editor)}, ${ref.editor.length > 1 ? "editors" : "editor"}`
+      : "";
     const who = authors || editors;
     if (who) out.text(`${stop(who)} `);
     const title = ref.title.trim();
@@ -492,7 +561,9 @@ const vancouver: CitationStyle = {
         break;
       case "thesis":
         out.text(`${title} [${(ref.genre || "dissertation").toLowerCase()}]. `);
-        out.text(`${[[ref.place, ref.publisher].filter(Boolean).join(": "), ref.year].filter(Boolean).join("; ")}.`);
+        out.text(
+          `${[[ref.place, ref.publisher].filter(Boolean).join(": "), ref.year].filter(Boolean).join("; ")}.`,
+        );
         break;
       case "webpage":
         out.text(`${title} [Internet]. `);
@@ -522,7 +593,14 @@ const apaStyle: CitationStyle = {
 
 // ---------- The list ----------
 
-export const STYLES: CitationStyle[] = [apaStyle, chicago, harvard, ieee, mla, vancouver];
+export const STYLES: CitationStyle[] = [
+  apaStyle,
+  chicago,
+  harvard,
+  ieee,
+  mla,
+  vancouver,
+];
 
 /** The style a page names in its front matter, `csl: ieee`; APA when it names none or one Cursive lacks. */
 export function styleById(id: string | undefined | null): CitationStyle {
@@ -552,20 +630,31 @@ export function styleOfProperties(properties: string): CitationStyle {
  * Each cited work's number, in the order the page first cites it; the
  * works it keeps but doesn't cite come after.
  */
-export function numberWorks(cited: Iterable<string>, refs: Reference[]): Map<string, number> {
+export function numberWorks(
+  cited: Iterable<string>,
+  refs: Reference[],
+): Map<string, number> {
   const numbers = new Map<string, number>();
   const known = new Set(refs.map((ref) => ref.key));
-  for (const key of cited) if (known.has(key) && !numbers.has(key)) numbers.set(key, numbers.size + 1);
-  for (const ref of sortForList(refs)) if (!numbers.has(ref.key)) numbers.set(ref.key, numbers.size + 1);
+  for (const key of cited)
+    if (known.has(key) && !numbers.has(key)) numbers.set(key, numbers.size + 1);
+  for (const ref of sortForList(refs))
+    if (!numbers.has(ref.key)) numbers.set(ref.key, numbers.size + 1);
   return numbers;
 }
 
 const sortForList = (refs: Reference[]) => apa.sortReferences(refs);
 
 /** The reference list in the style's order: by number, or by author, year and title. */
-export function listOrder(style: CitationStyle, refs: Reference[], numbers: Map<string, number>): Reference[] {
+export function listOrder(
+  style: CitationStyle,
+  refs: Reference[],
+  numbers: Map<string, number>,
+): Reference[] {
   if (!style.numeric) return sortForList(refs);
-  return [...refs].sort((a, b) => (numbers.get(a.key) ?? 1e9) - (numbers.get(b.key) ?? 1e9));
+  return [...refs].sort(
+    (a, b) => (numbers.get(a.key) ?? 1e9) - (numbers.get(b.key) ?? 1e9),
+  );
 }
 
 /** An entry as plain text. */
@@ -577,7 +666,13 @@ export const entryPlain = (style: CitationStyle, ref: Reference): string =>
 
 /** Takes ", ," and ",." that empty parts leave behind out of an entry. */
 function fixCommas(runs: Run[]): Run[] {
-  return runs.map((run) => ({ ...run, text: run.text.replace(/,\s*,/g, ",").replace(/,\s*\./g, ".").replace(/“,” /g, "") }));
+  return runs.map((run) => ({
+    ...run,
+    text: run.text
+      .replace(/,\s*,/g, ",")
+      .replace(/,\s*\./g, ".")
+      .replace(/“,” /g, ""),
+  }));
 }
 
 function trimEnd(runs: Run[]): Run[] {

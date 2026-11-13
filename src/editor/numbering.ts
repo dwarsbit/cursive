@@ -54,7 +54,11 @@ export interface Target {
   caption: string;
 }
 
-const NODE_KIND: Record<string, TargetKind> = { image: "fig", tableCaption: "tbl", blockMath: "eq" };
+const NODE_KIND: Record<string, TargetKind> = {
+  image: "fig",
+  tableCaption: "tbl",
+  blockMath: "eq",
+};
 
 /** The node's id when it is a numbered figure, table or equation. */
 function targetId(node: ProseNode): { id: string; kind: TargetKind } | null {
@@ -89,7 +93,11 @@ export function numberTargets(doc: ProseNode): Map<string, Target> {
 }
 
 /** A new id for a target, from a few of its words, that the page doesn't have yet. */
-export function newTargetId(kind: TargetKind, words: string, taken: Iterable<string>): string {
+export function newTargetId(
+  kind: TargetKind,
+  words: string,
+  taken: Iterable<string>,
+): string {
   const used = new Set(taken);
   const slug = words
     .replace(/\.[a-z0-9]{2,4}$/i, "")
@@ -97,7 +105,9 @@ export function newTargetId(kind: TargetKind, words: string, taken: Iterable<str
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .filter((word) => word && !["a", "an", "the", "of", "and", "in", "per"].includes(word))
+    .filter(
+      (word) => word && !["a", "an", "the", "of", "and", "in", "per"].includes(word),
+    )
     .slice(0, 3)
     .join("-");
   if (slug && !used.has(`${kind}-${slug}`)) return `${kind}-${slug}`;
@@ -134,7 +144,8 @@ function decorations(doc: ProseNode, targets: Map<string, Target>): DecorationSe
     if (target) {
       found.push(
         Decoration.node(pos, pos + node.nodeSize, {
-          "data-number": target.kind === "eq" ? `(${target.number})` : `${target.label}.`,
+          "data-number":
+            target.kind === "eq" ? `(${target.number})` : `${target.label}.`,
         }),
       );
     }
@@ -190,7 +201,9 @@ export const CrossRef = Node.create({
     start: (src) => src.search(new RegExp(`@${ID_SOURCE}`)),
     tokenize(src) {
       const found = matchCrossRef(src);
-      return found ? { type: "crossRef", raw: found.raw, target: found.target } : undefined;
+      return found
+        ? { type: "crossRef", raw: found.raw, target: found.target }
+        : undefined;
     },
   },
 
@@ -292,7 +305,10 @@ export const TableCaption = Node.create({
   },
 
   renderMarkdown(node, helpers) {
-    const text = helpers.renderChildren(node.content ?? []).replace(/\n+/g, " ").trim();
+    const text = helpers
+      .renderChildren(node.content ?? [])
+      .replace(/\n+/g, " ")
+      .trim();
     return `: ${text} {#${(node.attrs?.id as string | undefined) ?? ""}}`;
   },
 
@@ -377,7 +393,12 @@ export const Equation = BlockMath.extend({
     tokenize: (src: string) => {
       const found = EQUATION.exec(src);
       if (!found) return undefined;
-      return { type: "blockMath", raw: found[0], latex: found[1].trim(), id: found[2] ?? "" };
+      return {
+        type: "blockMath",
+        raw: found[0],
+        latex: found[1].trim(),
+        id: found[2] ?? "",
+      };
     },
   },
 

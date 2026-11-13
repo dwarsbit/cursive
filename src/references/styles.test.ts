@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { emptyReference, type Reference } from "./reference";
-import { entryPlain, listOrder, numberWorks, styleById, styleOfProperties } from "./styles";
+import {
+  entryPlain,
+  listOrder,
+  numberWorks,
+  styleById,
+  styleOfProperties,
+} from "./styles";
 
-const ref = (change: Partial<Reference>): Reference => ({ ...emptyReference("x"), ...change });
+const ref = (change: Partial<Reference>): Reference => ({
+  ...emptyReference("x"),
+  ...change,
+});
 
 const lee = ref({
   key: "lee2020",
@@ -63,7 +72,9 @@ describe("citation styles", () => {
     expect(entryPlain(style, lee)).toBe(
       "Lee, Kim, and Ji-woo Park. 2020. “Reading in a second language.” Journal of Reading 12 (3): 45–67. https://doi.org/10.1000/jr.2020.3.",
     );
-    expect(entryPlain(style, knuth)).toBe("Knuth, Donald E. 1984. The TeXbook. Reading, MA: Addison-Wesley.");
+    expect(entryPlain(style, knuth)).toBe(
+      "Knuth, Donald E. 1984. The TeXbook. Reading, MA: Addison-Wesley.",
+    );
     expect(entryPlain(style, smith)).toBe(
       "Smith, Jane. 2019. “Survey fatigue.” In Handbook of Surveys, edited by Al Brown and Bo Green, 10–20. London: Sage.",
     );
@@ -80,7 +91,9 @@ describe("citation styles", () => {
     expect(entryPlain(style, vaswani)).toBe(
       "Vaswani, Ashish, et al. “Attention is all you need.” Advances in Neural Information Processing Systems, 2017, pp. 5998–6008.",
     );
-    expect(cite("modern-language-association", ["vaswani2017", "p. 4"])).toBe("(Vaswani et al. 4)");
+    expect(cite("modern-language-association", ["vaswani2017", "p. 4"])).toBe(
+      "(Vaswani et al. 4)",
+    );
   });
 
   it("writes IEEE, numbered in the order works are first cited", () => {
@@ -88,7 +101,9 @@ describe("citation styles", () => {
     expect(entryPlain(style, lee)).toBe(
       "K. Lee and J.-W. Park, “Reading in a second language,” Journal of Reading, vol. 12, no. 3, pp. 45–67, 2020. doi: 10.1000/jr.2020.3.",
     );
-    expect(entryPlain(style, knuth)).toBe("D. E. Knuth, The TeXbook. Reading, MA: Addison-Wesley, 1984.");
+    expect(entryPlain(style, knuth)).toBe(
+      "D. E. Knuth, The TeXbook. Reading, MA: Addison-Wesley, 1984.",
+    );
     expect(cite("ieee", ["vaswani2017", "p. 4"], ["lee2020"])).toBe("[1, p. 4], [2]");
   });
 
@@ -97,8 +112,12 @@ describe("citation styles", () => {
     expect(entryPlain(style, lee)).toBe(
       "Lee, K. and Park, J.-W. (2020) ‘Reading in a second language’, Journal of Reading, 12(3), pp. 45–67. Available at: https://doi.org/10.1000/jr.2020.3.",
     );
-    expect(entryPlain(style, knuth)).toBe("Knuth, D.E. (1984) The TeXbook. Reading, MA: Addison-Wesley.");
-    expect(cite("harvard-cite-them-right", ["lee2020", "p. 50"])).toBe("(Lee and Park, 2020, p. 50)");
+    expect(entryPlain(style, knuth)).toBe(
+      "Knuth, D.E. (1984) The TeXbook. Reading, MA: Addison-Wesley.",
+    );
+    expect(cite("harvard-cite-them-right", ["lee2020", "p. 50"])).toBe(
+      "(Lee and Park, 2020, p. 50)",
+    );
   });
 
   it("writes Vancouver", () => {

@@ -4,7 +4,7 @@ import { numberWorks, styleById, type CitationStyle } from "./styles";
 import { activeSources } from "./sources";
 import {
   fetchZoteroItems,
-  libraryOf,
+  librariesOf,
   zoteroReference,
   type ZoteroItem,
 } from "./zotero";
@@ -54,10 +54,12 @@ const Context = createContext<PageReferences>(NONE);
 
 export const usePageReferences = () => useContext(Context);
 
-/** Whether a source may hold an item copied from `library`. */
-function mayHold(sourceLibrary: string, library: string): boolean {
-  // The Zotero app is the user's own library, which zotero.org holds too.
-  return sourceLibrary === library || sourceLibrary === "local" || library === "local";
+/** Whether a library may hold an item copied from `library`. */
+export function mayHold(sourceLibrary: string, library: string): boolean {
+  if (sourceLibrary === library) return true;
+  // The Zotero app's own library is the user's, which zotero.org holds too.
+  const own = (id: string) => id === "local" || id.startsWith("users/");
+  return (sourceLibrary === "local" || library === "local") && own(sourceLibrary) && own(library);
 }
 
 /** Asks the enabled sources for the items the references came from. */
@@ -73,20 +75,19 @@ export async function checkReferences(
   // Keys a source of the reference's own library answered for.
   const asked = new Set<string>();
   let failure: unknown = null;
-  for (const source of sources) {
-    const library = libraryOf(source);
+  for (const library of sources.flatMap(librariesOf)) {
     const wanted = linked.filter(
-      (ref) => !found.has(ref.key) && mayHold(library, ref.zotero!.library),
+      (ref) => !found.has(ref.key) && mayHold(library.id, ref.zotero!.library),
     );
     if (!wanted.length) continue;
     try {
-      const items = await fetchZoteroItems(source, [
+      const items = await fetchZoteroItems(library, [
         ...new Set(wanted.map((ref) => ref.zotero!.item)),
       ]);
       for (const ref of wanted) {
         const item = items.find((candidate) => candidate.key === ref.zotero!.item);
         if (item) found.set(ref.key, item);
-        if (library === ref.zotero!.library) asked.add(ref.key);
+        if (library.id === ref.zotero!.library) asked.add(ref.key);
       }
     } catch (error) {
       failure = error;

@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CiteController, CiteState } from "@/editor/cite";
 import { insertCrossRef, numberingOf, type Target } from "@/editor/numbering";
 import { entryPlain } from "@/references/styles";
-import { usePageReferences } from "@/references/context";
+import { mayHold, usePageReferences } from "@/references/context";
 import {
   putReference,
   readBibliography,
@@ -13,14 +13,22 @@ import {
   writeBibliography,
   type Reference,
 } from "@/references/reference";
-import { activeSources, sourceName, useSources } from "@/references/sources";
+import { lookUp, lookupOf } from "@/references/lookup";
 import {
-  libraryOf,
+  activeBibFiles,
+  activeSources,
+  readBibFile,
+  sourceName,
+  useSources,
+  type BibSource,
+} from "@/references/sources";
+import {
+  librariesOf,
   searchZotero,
   zoteroReference,
   zoteroYear,
   type ZoteroItem,
-  type ZoteroSource,
+  type ZoteroLibrary,
 } from "@/references/zotero";
 import { cn } from "@/lib/cn";
 import { messageOf } from "./Dialog";
@@ -28,7 +36,9 @@ import { messageOf } from "./Dialog";
 type Option =
   | { kind: "page"; ref: Reference }
   | { kind: "target"; target: Target }
-  | { kind: "zotero"; item: ZoteroItem; source: ZoteroSource };
+  | { kind: "zotero"; item: ZoteroItem; library: ZoteroLibrary }
+  | { kind: "bib"; ref: Reference; source: BibSource }
+  | { kind: "lookup"; ref: Reference };
 
 /** Asks the app to open its settings at the references. */
 export const openReferenceSettings = () =>
@@ -149,7 +159,21 @@ export function addReference(
 export const bibliographyFence = (refs: Reference[]) =>
   toBibliographyFence(writeBibliography(refs));
 
-/** The works to cite under a typed `@`: the page's first, then Zotero's. */
+const GROUP_HEAD = "px-2 pt-2 pb-1 text-2xs font-medium text-muted-foreground";
+const NOTE = "px-2 py-2 text-xs text-muted-foreground";
+
+interface Found {
+  query: string;
+  zotero: Option[];
+  bib: Option[];
+  problem: string | null;
+}
+
+/**
+ * The works to cite under a typed `@`: the page's first, then its
+ * figures, tables and equations, then Zotero's and the BibTeX files'.
+ * A DOI or an ISBN is looked up.
+ */
 export function CiteMenu({
   state,
   controller,
@@ -160,8 +184,12 @@ export function CiteMenu({
   const { editor, query, range, rect } = state;
   const { refs, addElsewhere, style } = usePageReferences();
   const sources = useSources();
-  const [found, setFound] = useState<{ query: string; options: Option[] } | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [found, setFound] = useState<Found | null>(null);
+  const [looked, setLooked] = useState<{
+    query: string;
+    ref: Reference | null;
+    problem: string | null;
+  } | null>(null);
   const [selected, setSelected] = useState(0);
   const [lastQuery, setLastQuery] = useState(query);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -171,7 +199,10 @@ export function CiteMenu({
     setSelected(0);
   }
 
-  const hasSources = sources.some((source) => source.enabled);
+  const hasZotero = sources.some((source) => source.enabled && source.kind !== "bibtex");
+  const hasBib = sources.some((source) => source.enabled && source.kind === "bibtex");
+  const hasSources = hasZotero || hasBib;
+  const lookup = lookupOf(query);
   const onPage: Option[] = [...refs.values()]
     .filter((ref) => matches(ref, query))
     .slice(0, 5)
@@ -183,43 +214,100 @@ export function CiteMenu({
   const pageItems = new Set(
     onPage.map((o) => (o.kind === "page" ? o.ref.zotero?.item : "")),
   );
-  const fromZotero = (found?.options ?? []).filter(
+  const current = found?.query === query ? found : null;
+  const fromZotero = (current?.zotero ?? []).filter(
     (o) => o.kind === "zotero" && !pageItems.has(o.item.key),
   );
-  const options = [...onPage, ...targets, ...fromZotero];
-  const searching = hasSources && found?.query !== query;
+  const fromBib = (current?.bib ?? []).filter(
+    (o) => o.kind === "bib" && !refs.has(o.ref.key),
+  );
+  const lookedUp = looked?.query === query ? looked : null;
+  const fromLookup: Option[] =
+    lookedUp?.ref && !refs.has(lookedUp.ref.key) ? [{ kind: "lookup", ref: lookedUp.ref }] : [];
+  const options = [...onPage, ...targets, ...fromLookup, ...fromZotero, ...fromBib];
+  const searching = hasSources && !current;
   const index = Math.min(selected, Math.max(0, options.length - 1));
 
-  // Zotero is asked a moment after the typing rests.
+  // Zotero and the BibTeX files are asked a moment after the typing rests.
   useEffect(() => {
     if (!hasSources) return;
-    let current = true;
+    let live = true;
     const timer = setTimeout(() => {
       void (async () => {
-        const all: Option[] = [];
+        const zotero: Option[] = [];
+        const bib: Option[] = [];
         const seen = new Set<string>();
         let failure: string | null = null;
         for (const source of await activeSources()) {
+          for (const library of librariesOf(source)) {
+            try {
+              for (const item of await searchZotero(library, query)) {
+                if (seen.has(`${library.id}:${item.key}`)) continue;
+                seen.add(`${library.id}:${item.key}`);
+                zotero.push({ kind: "zotero", item, library });
+              }
+            } catch (error) {
+              failure = messageOf(error);
+            }
+          }
+        }
+        for (const source of await activeBibFiles()) {
           try {
-            for (const item of await searchZotero(source, query)) {
-              if (seen.has(item.key)) continue;
-              seen.add(item.key);
-              all.push({ kind: "zotero", item, source });
+            for (const ref of (await readBibFile(source))
+              .filter((ref) => query.trim() && matches(ref, query))
+              .slice(0, 12)) {
+              bib.push({ kind: "bib", ref, source });
             }
           } catch (error) {
             failure = messageOf(error);
           }
         }
-        if (!current) return;
-        setFound({ query, options: all });
-        setProblem(all.length ? null : failure);
+        if (!live) return;
+        setFound({
+          query,
+          zotero,
+          bib,
+          problem: zotero.length || bib.length ? null : failure,
+        });
       })();
     }, 250);
     return () => {
-      current = false;
+      live = false;
       clearTimeout(timer);
     };
   }, [query, hasSources]);
+
+  // A DOI or an ISBN is looked up once the typing rests.
+  const lookupKey = lookup ? `${lookup.kind}:${lookup.id}` : "";
+  useEffect(() => {
+    const wanted = lookupOf(query);
+    if (!wanted) return;
+    let live = true;
+    const timer = setTimeout(() => {
+      lookUp(wanted, refs.keys())
+        .then((ref) => {
+          if (live)
+            setLooked({
+              query,
+              ref,
+              problem: ref
+                ? null
+                : wanted.kind === "doi"
+                  ? "No work has this DOI."
+                  : "Open Library has no book with this ISBN.",
+            });
+        })
+        .catch((error: unknown) => {
+          if (live) setLooked({ query, ref: null, problem: messageOf(error) });
+        });
+    }, 400);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+    // The lookup is asked again only when what it looks up changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookupKey]);
 
   const pick = (option: Option) => {
     controller.close();
@@ -227,15 +315,16 @@ export function CiteMenu({
       insertCrossRef(editor, range, option.target.id);
       return;
     }
-    if (option.kind === "page") {
+    if (option.kind === "page" || option.kind === "bib" || option.kind === "lookup") {
       insertCitation(editor, range, option.ref, addElsewhere);
       return;
     }
-    const library = libraryOf(option.source);
     const known = [...refs.values()].find(
-      (ref) => ref.zotero?.item === option.item.key,
+      (ref) =>
+        ref.zotero?.item === option.item.key &&
+        mayHold(option.library.id, ref.zotero.library),
     );
-    const ref = known ?? zoteroReference(option.item, library, refs.keys());
+    const ref = known ?? zoteroReference(option.item, option.library.id, refs.keys());
     insertCitation(editor, range, ref, addElsewhere);
   };
 
@@ -282,41 +371,62 @@ export function CiteMenu({
       ?.scrollIntoView({ block: "nearest" });
   }, [index, query]);
 
-  const several =
-    new Set(fromZotero.map((o) => (o.kind === "zotero" ? o.source.id : ""))).size > 1;
+  const zoteroLibraries = new Set(
+    fromZotero.map((o) => (o.kind === "zotero" ? o.library.id : "")),
+  ).size;
+  const bibFiles = new Set(fromBib.map((o) => (o.kind === "bib" ? o.source.id : ""))).size;
+  const refDetail = (ref: Reference) =>
+    [
+      ref.author
+        .map((name) => name.split(",")[0])
+        .slice(0, 3)
+        .join(", "),
+      ref.year,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
   const row = (option: Option, at: number) => {
     const on = at === index;
-    const title =
-      option.kind === "page"
-        ? option.ref.title
-        : option.kind === "target"
-          ? [option.target.label, option.target.caption].filter(Boolean).join(". ")
-          : (option.item.title ?? "");
-    const detail =
-      option.kind === "page"
-        ? `@${option.ref.key}`
-        : option.kind === "target"
-          ? `@${option.target.id}`
-        : [
-            (option.item.creators ?? [])
-              .map((c) => c.lastName || c.name || "")
-              .filter(Boolean)
-              .slice(0, 3)
-              .join(", "),
-            zoteroYear(option.item.date),
-            several ? sourceName(option.source) : "",
-          ]
-            .filter(Boolean)
-            .join(" · ");
+    let title: string;
+    let detail: string;
+    let key: string;
+    if (option.kind === "page") {
+      title = option.ref.title;
+      detail = `@${option.ref.key}`;
+      key = `p:${option.ref.key}`;
+    } else if (option.kind === "target") {
+      title = [option.target.label, option.target.caption].filter(Boolean).join(". ");
+      detail = `@${option.target.id}`;
+      key = `t:${option.target.id}`;
+    } else if (option.kind === "zotero") {
+      title = option.item.title ?? "";
+      detail = [
+        (option.item.creators ?? [])
+          .map((c) => c.lastName || c.name || "")
+          .filter(Boolean)
+          .slice(0, 3)
+          .join(", "),
+        zoteroYear(option.item.date),
+        zoteroLibraries > 1 ? option.library.group || sourceName(option.library.source) : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      key = `z:${option.library.id}:${option.item.key}`;
+    } else if (option.kind === "bib") {
+      title = option.ref.title;
+      detail = [`@${option.ref.key}`, refDetail(option.ref), bibFiles > 1 ? sourceName(option.source) : ""]
+        .filter(Boolean)
+        .join(" · ");
+      key = `b:${option.source.id}:${option.ref.key}`;
+    } else {
+      title = option.ref.title;
+      detail = refDetail(option.ref);
+      key = `l:${option.ref.key}`;
+    }
     return (
       <button
-        key={
-          option.kind === "page"
-            ? `p:${option.ref.key}`
-            : option.kind === "target"
-              ? `t:${option.target.id}`
-              : `z:${option.item.key}`
-        }
+        key={key}
         type="button"
         role="option"
         aria-selected={on}
@@ -324,7 +434,11 @@ export function CiteMenu({
           "flex w-full flex-col rounded-md px-2 py-[5px] text-left",
           on && "bg-accent",
         )}
-        title={option.kind === "page" ? entryPlain(style, option.ref) : undefined}
+        title={
+          option.kind === "page" || option.kind === "bib" || option.kind === "lookup"
+            ? entryPlain(style, option.ref)
+            : undefined
+        }
         onMouseEnter={() => setSelected(at)}
         onClick={() => pick(option)}
       >
@@ -333,6 +447,9 @@ export function CiteMenu({
       </button>
     );
   };
+
+  let at = 0;
+  const rows = (list: Option[]) => list.map((option) => row(option, at++));
 
   return (
     <div
@@ -346,46 +463,68 @@ export function CiteMenu({
       <div className="min-h-0 flex-1 overflow-y-auto p-1">
         {onPage.length > 0 && (
           <div role="group" aria-label="On this page">
-            <div className="px-2 pt-2 pb-1 text-2xs font-medium text-muted-foreground">
-              On this page
-            </div>
-            {onPage.map((option, at) => row(option, at))}
+            <div className={GROUP_HEAD}>On this page</div>
+            {rows(onPage)}
           </div>
         )}
         {targets.length > 0 && (
           <div role="group" aria-label="Figures, tables and equations">
-            <div className="px-2 pt-2 pb-1 text-2xs font-medium text-muted-foreground">
-              Figures, tables and equations
-            </div>
-            {targets.map((option, at) => row(option, onPage.length + at))}
+            <div className={GROUP_HEAD}>Figures, tables and equations</div>
+            {rows(targets)}
           </div>
         )}
-        {hasSources && (fromZotero.length > 0 || !searching) && (
-          <div role="group" aria-label="Zotero">
-            <div className="px-2 pt-2 pb-1 text-2xs font-medium text-muted-foreground">
-              Zotero
+        {lookup && (
+          <div role="group" aria-label={lookup.kind === "doi" ? "DOI" : "ISBN"}>
+            <div className={GROUP_HEAD}>
+              {lookup.kind === "doi" ? "Found by DOI" : "Found by ISBN"}
             </div>
-            {fromZotero.map((option, at) =>
-              row(option, onPage.length + targets.length + at),
+            {rows(fromLookup)}
+            {!lookedUp && (
+              <p className={NOTE}>
+                {lookup.kind === "doi" ? "Looking up the DOI…" : "Looking up the ISBN…"}
+              </p>
             )}
-            {!searching && fromZotero.length === 0 && (
-              <p className="px-2 py-2 text-xs text-muted-foreground">
-                {problem ??
-                  (query
-                    ? `Nothing in Zotero matches “${query}”.`
-                    : "Type to search Zotero.")}
+            {lookedUp?.problem && <p className={NOTE}>{lookedUp.problem}</p>}
+            {lookedUp?.ref && !fromLookup.length && (
+              <p className={NOTE}>The page has this work already.</p>
+            )}
+          </div>
+        )}
+        {hasZotero && (fromZotero.length > 0 || current) && (
+          <div role="group" aria-label="Zotero">
+            <div className={GROUP_HEAD}>Zotero</div>
+            {rows(fromZotero)}
+            {current && fromZotero.length === 0 && !lookup && (
+              <p className={NOTE}>
+                {current.problem ??
+                  (query ? `Nothing in Zotero matches “${query}”.` : "Type to search Zotero.")}
               </p>
             )}
           </div>
         )}
-        {searching && fromZotero.length === 0 && (
-          <p className="px-2 py-2 text-xs text-muted-foreground">Searching Zotero…</p>
+        {hasBib && fromBib.length > 0 && (
+          <div role="group" aria-label="BibTeX">
+            <div className={GROUP_HEAD}>BibTeX</div>
+            {rows(fromBib)}
+          </div>
         )}
-        {!hasSources && (
+        {hasBib && !hasZotero && current && fromBib.length === 0 && !lookup && (
+          <p className={NOTE}>
+            {current.problem ??
+              (query
+                ? `Nothing in your BibTeX files matches “${query}”.`
+                : "Type to search your BibTeX files.")}
+          </p>
+        )}
+        {searching && fromZotero.length === 0 && fromBib.length === 0 && (
+          <p className={NOTE}>Searching…</p>
+        )}
+        {!hasSources && !lookup && (
           <div className="flex flex-col items-start gap-2 px-2 py-2.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <BookMarked className="size-3.5" aria-hidden />
-              Connect Zotero to cite works from your library.
+              Connect Zotero or add a BibTeX file to cite works from your library, or
+              type a DOI or an ISBN.
             </span>
             <button
               type="button"

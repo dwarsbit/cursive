@@ -31,7 +31,7 @@
         "style-src": "'self' 'unsafe-inline'",
         "img-src": "'self' data: blob: https:",
         "font-src": "'self' data:",
-        "connect-src": "'self' ipc: http://ipc.localhost https://api.zotero.org",
+        "connect-src": "'self' ipc: http://ipc.localhost https://api.zotero.org https://api.crossref.org https://openlibrary.org",
         "object-src": "'none'",
         "frame-src": "'none'",
         "base-uri": "'none'",
