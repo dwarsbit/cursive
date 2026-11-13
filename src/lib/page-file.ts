@@ -78,10 +78,12 @@ export function writePage(page: Page): string {
 
 /**
  * The body of a file with the Markdown syntax taken out, for counting
- * words. Equations are not words.
+ * words. Equations, citations and the reference list are not words.
  */
 export function plainText(markdown: string): string {
   return markdown
+    .replace(/^(`{3,})bibliography[ \t]*\n[\s\S]*?\n?\1[ \t]*$/gm, " ")
+    .replace(/\[@[^\]\n]+\]/g, " ")
     .replace(/^```.*$/gm, " ")
     .replace(/\$\$[\s\S]*?\$\$/g, " ")
     .replace(/\$[^$\n]+\$/g, " ")

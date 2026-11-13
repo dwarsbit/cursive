@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { ReferencesProvider } from "@/references/context";
 import { SlideView } from "@/slides/SlideView";
 import type { Slide } from "@/slides/deck";
 import { pageRule, type ExportJob, type Part } from "./job";
@@ -27,6 +28,12 @@ function Slides({
     </div>
   ));
 }
+
+/** A part's Markdown, for the references its citations name. */
+const partMarkdown = (part: Part): string =>
+  part.kind === "slides"
+    ? part.slides.map((slide) => slide.body).join("\n\n")
+    : part.markdown;
 
 /**
  * What an export prints. It sits next to the app, out of sight on the
@@ -83,16 +90,20 @@ export function PrintView({ job, onReady }: { job: ExportJob; onReady: () => voi
       )}
       {job.parts.map((part) =>
         part.kind === "slides" && job.format === "slides" ? (
-          <Slides key={part.path} part={part} notes={false} />
+          <ReferencesProvider key={part.path} markdown={partMarkdown(part)}>
+            <Slides part={part} notes={false} />
+          </ReferencesProvider>
         ) : (
-          <section key={part.path} className="print-part">
-            <h1 className="print-title">{part.title}</h1>
-            {part.kind === "slides" ? (
-              <Slides part={part} notes={job.notes} />
-            ) : (
-              <PrintDoc markdown={part.markdown} />
-            )}
-          </section>
+          <ReferencesProvider key={part.path} markdown={partMarkdown(part)}>
+            <section className="print-part">
+              <h1 className="print-title">{part.title}</h1>
+              {part.kind === "slides" ? (
+                <Slides part={part} notes={job.notes} />
+              ) : (
+                <PrintDoc markdown={part.markdown} />
+              )}
+            </section>
+          </ReferencesProvider>
         ),
       )}
     </div>,

@@ -17,12 +17,15 @@ import { GripVertical, Plus } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentExtensions, lowlight } from "@/editor/extensions";
+import { Cite, createCiteController } from "@/editor/cite";
 import { createSlashController, Slash } from "@/editor/slash";
 import { tidyMarkdown } from "@/lib/page-file";
 import { scrollNearEdge, startPointerDrag } from "@/lib/pointer-drag";
 import type { TutorialKind } from "@/tutorial/blocks";
+import { CiteMenu } from "./CiteMenu";
 import { CodeBlockView } from "./CodeBlockView";
 import { MathPopover, type MathTarget } from "./MathPopover";
+import { BibliographyView, CitationView } from "./ReferenceViews";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { SlashMenu } from "./SlashMenu";
 import {
@@ -41,7 +44,12 @@ export interface EditorChange {
   markdown: string;
 }
 
-const VIEWS: Record<TutorialKind, React.ComponentType<ReactNodeViewProps>> = {
+const VIEWS: Record<
+  TutorialKind | "citation" | "bibliography",
+  React.ComponentType<ReactNodeViewProps>
+> = {
+  citation: CitationView,
+  bibliography: BibliographyView,
   quiz: QuizView,
   assignment: AssignmentView,
   goals: GoalsView,
@@ -54,10 +62,10 @@ const VIEWS: Record<TutorialKind, React.ComponentType<ReactNodeViewProps>> = {
   flashcards: FlashcardsView,
 };
 
-/** The document's blocks, with the tutorial blocks drawn as forms. */
+/** The document's blocks, with the tutorial blocks drawn as forms and references in APA style. */
 const withTutorialViews = (extensions: AnyExtension[]): AnyExtension[] =>
   extensions.map((extension) => {
-    const view = VIEWS[extension.name as TutorialKind] as
+    const view = VIEWS[extension.name as keyof typeof VIEWS] as
       React.ComponentType<ReactNodeViewProps> | undefined;
     if (!view || extension.type !== "node") return extension;
     return (extension as TiptapNode).extend({
@@ -144,6 +152,8 @@ export function Editor({
   const [math, setMath] = useState<MathTarget | null>(null);
   const [controller] = useState(createSlashController);
   const slash = useSyncExternalStore(controller.subscribe, controller.getState);
+  const [citer] = useState(createCiteController);
+  const cite = useSyncExternalStore(citer.subscribe, citer.getState);
   const hovered = useRef<{ node: ProseNode; pos: number } | null>(null);
   const [dropLine, setDropLine] = useState<DropLine | null>(null);
   const onChangeRef = useRef(onChange);
@@ -180,6 +190,7 @@ export function Editor({
       includeChildren: true,
     }),
     Slash.configure(controller.options),
+    Cite.configure(citer.options),
   ]);
 
   const editor = useEditor({
@@ -300,6 +311,7 @@ export function Editor({
   const menus = (
     <>
       {slash && <SlashMenu state={slash} controller={controller} />}
+      {cite && <CiteMenu state={cite} controller={citer} />}
       {math && (
         <MathPopover
           key={`${math.kind}:${math.pos}`}

@@ -124,3 +124,12 @@ describe("tidyMarkdown", () => {
     expect(tidyMarkdown(code)).toBe(code);
   });
 });
+
+describe("plainText and references", () => {
+  it("leaves citations and the reference list out of the words", () => {
+    const text = plainText(
+      "One two [@lee2020, p. 4].\n\n```bibliography\n- key: lee2020\n  title: Many words here\n```",
+    );
+    expect(text.trim().split(/\s+/)).toEqual(["One", "two", "."]);
+  });
+});

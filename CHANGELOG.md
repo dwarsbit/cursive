@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 (unreleased)
+
+- Cite a work from Zotero: type `@` in a page and pick it from the Zotero app on your computer or your library at zotero.org. Click a citation to add the pages you cite.
+- See the works a page cites in a reference list at its end, in APA style. Add one with `/bibliography`, and remove a work no citation names any more.
+- Keep working without Zotero: each work is copied into the page, as a `bibliography` block in its Markdown.
+- See when a work changed or was deleted in Zotero, on its citation and in the reference list, and update it from Zotero or keep your copy.
+- Connect the Zotero app or a zotero.org library in Settings, with the gear in the header. In the desktop app the zotero.org key is kept in your system's credential store.
+- Published sites and PDF exports show citations and the reference list in APA style.
+
 ## 0.1.0 (2026-11-12)
 
 - Write a page in blocks: text, headings, to-do, bulleted and numbered lists, toggle, quote, callout, table, code with syntax colors, equation and divider.

@@ -3,6 +3,8 @@ import type { LucideIcon } from "lucide-react";
 import { newSource, type TutorialKind } from "@/tutorial/blocks";
 import {
   BookA,
+  BookMarked,
+  AtSign,
   ChevronRight,
   CircleHelp,
   ClipboardList,
@@ -29,7 +31,7 @@ export interface BlockItem {
   description: string;
   /** Extra words the slash menu's filter matches. */
   keywords: string[];
-  group: "Basic blocks" | "More blocks" | "Tutorial blocks";
+  group: "Basic blocks" | "More blocks" | "References" | "Tutorial blocks";
   /** The tile: a few letters or an icon. */
   glyph: string | LucideIcon;
   /** The block opens a field of its own, so the caret doesn't go back to the page. */
@@ -272,6 +274,27 @@ export const BLOCKS: BlockItem[] = [
     glyph: Minus,
     turnInto: false,
     run: (chain) => chain.setHorizontalRule(),
+  },
+  {
+    id: "citation",
+    title: "Citation",
+    description: "Cite a work from Zotero",
+    keywords: ["cite", "reference", "zotero", "source"],
+    group: "References",
+    glyph: AtSign,
+    turnInto: false,
+    run: (chain) => chain.insertContent("@"),
+  },
+  {
+    id: "bibliography",
+    title: "Bibliography",
+    description: "The works this page cites",
+    keywords: ["references", "works cited", "sources", "zotero"],
+    group: "References",
+    glyph: BookMarked,
+    turnInto: false,
+    run: (chain) =>
+      chain.insertContent({ type: "bibliography", attrs: { source: "" } }),
   },
   ...TUTORIAL.map(({ id, title, description, keywords, glyph }): BlockItem => ({
     id,
