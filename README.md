@@ -71,6 +71,18 @@ now you run it from the source, as described under [Develop](#develop).
   listed under the page, or at the bottom of a slide. A footnote is written
   `^[The note.]` where it is cited, as Pandoc and Obsidian read it. Numbered
   notes (`[^1]`) from other tools are read too.
+- **Images and files**: add an image or a file from the `/` menu, or drop
+  or paste it on a page. It is copied into the project's `attachments`
+  folder and written as a Markdown image or link.
+- **Links between pages**: type `[[` to link to another page. A link is
+  written `[[Page title]]`, as Obsidian reads it, and follows the page when
+  it gets another title or moves. Under each page you see the pages that
+  link to it.
+- **Search and find**: search every page of a project with Cmd/Ctrl +
+  Shift + F, and find and replace in a page with Cmd/Ctrl + F.
+- **History**: Cursive keeps snapshots of each page while you write. Compare
+  one with the page now and restore it from the history button in the
+  header.
 
 ### Present
 
@@ -124,8 +136,8 @@ now you run it from the source, as described under [Develop](#develop).
   you choose “Save as PDF”. A presentation is one slide per page, or the
   slides with their speaker notes under them.
 
-Sync carries the pages, the `.md` files. An empty folder stays on the
-computer it was made on.
+Sync carries the pages and the images and files they show. An empty folder
+stays on the computer it was made on.
 
 ## Compared with Polemic, Notion and Obsidian
 
@@ -142,6 +154,7 @@ computer it was made on.
 | Slides                       | Yes                                | With LaTeX packages | No                          | Yes                   |
 | Quizzes and assignments      | Yes                                | No                  | No                          | No                    |
 | Citations from Zotero        | Yes, in APA style                  | Yes, with BibTeX    | No                          | With plugins          |
+| Links and backlinks          | Yes                                | Within a paper      | Yes                         | Yes                   |
 | Mobile app                   | No                                 | No                  | Yes                         | Yes                   |
 
 - **Compared with Polemic**: Polemic is for the paper itself: LaTeX, a
@@ -152,10 +165,10 @@ computer it was made on.
   online, with databases and teams. Cursive keeps each page as a Markdown
   file in a folder you choose, and adds slides, quizzes and assignments. It
   has no databases.
-- **Compared with Obsidian**: both work on a folder of Markdown files.
-  Obsidian has links between notes, a graph and plugins. Cursive has a
-  block editor, slides with layouts, and quizzes and assignments with
-  grading.
+- **Compared with Obsidian**: both work on a folder of Markdown files and
+  link notes with `[[links]]`. Obsidian has a graph and plugins. Cursive
+  has a block editor, slides with layouts, and quizzes and assignments
+  with grading.
 - **Switching to Cursive**: open any folder of Markdown files as a project.
   Cursive reads the front matter of each file as the page's properties.
 

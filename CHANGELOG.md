@@ -12,6 +12,14 @@
 - See a page's footnotes numbered and listed under it. On a slide they sit at the bottom and are numbered per slide. Click a note in the list to change it.
 - Footnotes are kept in the Markdown where they are cited, as `^[The note.]`. Numbered notes (`[^1]`) written in other tools are read and become inline notes.
 - PDF exports and published sites list a page's footnotes at its end, and a slide's at its bottom.
+- Add an image or a file from the `/` menu, or drop or paste it on a page. It is copied into the project's `attachments` folder and written as a Markdown image or link, so other tools show it too.
+- Click a file on a page to open it in the app your computer opens it with. In the browser it downloads.
+- Sync carries images and other files too, not only pages, and published sites and PDF exports show the images.
+- Link to another page: type `[[` and pick it, or add a new page from the menu. A link is written `[[Page title]]`, as Obsidian and other wiki tools read it, and links to a page follow it when it gets another title or moves.
+- See the pages that link to a page under it, with the line that links, on the page and on its published site.
+- Search every page of a project from the sidebar or with Cmd/Ctrl + Shift + F. Results show where the text is, and open the page with it marked.
+- Find text in a page with Cmd/Ctrl + F, in Visual and in Markdown mode, and replace one match or all of them.
+- See a page's earlier versions with the history button in the header: Cursive keeps a snapshot while you write, at most every 10 minutes, or each hour for a project in your account. Compare one with the page now and restore it; the page as it was is kept as a snapshot.
 
 ## 0.1.0 (2026-11-12)
 

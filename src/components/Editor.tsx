@@ -19,6 +19,13 @@ import { createPortal } from "react-dom";
 import { documentExtensions, lowlight } from "@/editor/extensions";
 import { Footnote, inlineNumberedNotes } from "@/editor/footnote";
 import { Cite, createCiteController } from "@/editor/cite";
+import { Find, findTargetFor } from "@/editor/find";
+import { createFileDropController, FileDrop, insertFiles } from "@/editor/media";
+import { offerFindTarget } from "@/lib/find";
+import { createLinkMenuController, PageLinkMenu } from "@/editor/page-link";
+import { relativeHref } from "@/lib/links";
+import { parentOf } from "@/lib/project";
+import { useWorkspace } from "@/lib/workspace";
 import { createSlashController, Slash } from "@/editor/slash";
 import { tidyMarkdown } from "@/lib/page-file";
 import { scrollNearEdge, startPointerDrag } from "@/lib/pointer-drag";
@@ -28,6 +35,8 @@ import { CodeBlockView } from "./CodeBlockView";
 import { FootnotePopover } from "./FootnotePopover";
 import { Footnotes } from "./Footnotes";
 import { MathPopover, type MathTarget } from "./MathPopover";
+import { withPageViews } from "./MediaViews";
+import { LinkMenu } from "./PageLinks";
 import { BibliographyView, CitationView } from "./ReferenceViews";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { SlashMenu } from "./SlashMenu";
@@ -158,6 +167,16 @@ export function Editor({
   const slash = useSyncExternalStore(controller.subscribe, controller.getState);
   const [citer] = useState(createCiteController);
   const cite = useSyncExternalStore(citer.subscribe, citer.getState);
+  const [linker] = useState(createLinkMenuController);
+  const linking = useSyncExternalStore(linker.subscribe, linker.getState);
+  const workspace = useWorkspace();
+  const workspaceRef = useRef(workspace);
+  useEffect(() => {
+    workspaceRef.current = workspace;
+  });
+  const fileInput = useRef<HTMLInputElement>(null);
+  const fileKind = useRef<"image" | "file">("image");
+  const filesAt = useRef<number | null>(null);
   const hovered = useRef<{ node: ProseNode; pos: number } | null>(null);
   const [dropLine, setDropLine] = useState<DropLine | null>(null);
   const onChangeRef = useRef(onChange);
@@ -165,8 +184,29 @@ export function Editor({
     onChangeRef.current = onChange;
   });
 
+  const [dropper] = useState(createFileDropController);
+
+  /** Adds files to the project and puts them in the page at `pos`, or at the caret. */
+  const addFiles = (target: TiptapEditor, files: File[], pos: number | null) => {
+    const { addFiles: add, active, canAddFiles } = workspaceRef.current;
+    if (!canAddFiles || !files.length) return false;
+    void add(files).then((paths) => {
+      const dir = active ? parentOf(active) : "";
+      insertFiles(
+        target,
+        paths.map((path, index) => ({
+          href: relativeHref(dir, path),
+          name: files[index]?.name ?? path,
+          image: files[index]?.type.startsWith("image/") ?? false,
+        })),
+        pos ?? undefined,
+      );
+    });
+    return true;
+  };
+
   const [extensions] = useState(() => [
-    ...withTutorialViews(
+    ...withPageViews(withTutorialViews(
       documentExtensions({
         codeBlock: CodeBlockLowlight.extend({
           addNodeView() {
@@ -179,7 +219,7 @@ export function Editor({
         }),
         footnote: Footnote.configure({ onOpen: setNote }),
       }),
-    ),
+    )),
     InlineMath.configure({
       katexOptions: { throwOnError: false },
       onClick: (_node, pos) => setMath({ pos, kind: "inlineMath" }),
@@ -196,6 +236,9 @@ export function Editor({
     }),
     Slash.configure(controller.options),
     Cite.configure(citer.options),
+    PageLinkMenu.configure(linker.options),
+    FileDrop.configure(dropper.options),
+    Find,
   ]);
 
   const editor = useEditor({
@@ -240,6 +283,38 @@ export function Editor({
     }
     if (editorRef) editorRef.current = editor;
   }, [editor, focusRef, focusEndRef, editorRef]);
+
+  const addFilesHere = useRef(addFiles);
+  useEffect(() => {
+    addFilesHere.current = addFiles;
+  });
+  useEffect(
+    () => dropper.handle((files, pos) => addFilesHere.current(editor, files, pos)),
+    [dropper, editor],
+  );
+
+  // The find bar works on this page, or on the slide shown.
+  useEffect(() => offerFindTarget(findTargetFor(editor)), [editor]);
+
+  // The Image and File blocks of the slash menu ask for files to add.
+  useEffect(() => {
+    const pick = (event: Event) => {
+      if (!editor.view.hasFocus() || !workspaceRef.current.canAddFiles) return;
+      fileKind.current = (event as CustomEvent<"image" | "file">).detail;
+      // Where the caret is once the slash menu took its text away.
+      filesAt.current = editor.state.selection.from;
+      queueMicrotask(() => {
+        filesAt.current = editor.state.selection.from;
+      });
+      const input = fileInput.current;
+      if (!input) return;
+      input.accept = fileKind.current === "image" ? "image/*" : "";
+      input.value = "";
+      input.click();
+    };
+    window.addEventListener("cursive:add-files", pick);
+    return () => window.removeEventListener("cursive:add-files", pick);
+  }, [editor]);
 
   // Blocks move with the pointer, not the browser's drag and drop: the
   // handle never starts one.
@@ -317,6 +392,7 @@ export function Editor({
     <>
       {slash && <SlashMenu state={slash} controller={controller} />}
       {cite && <CiteMenu state={cite} controller={citer} />}
+      {linking && <LinkMenu state={linking} controller={linker} />}
       {math && (
         <MathPopover
           key={`${math.kind}:${math.pos}`}
@@ -336,9 +412,23 @@ export function Editor({
     </>
   );
 
+  const picker = (
+    <input
+      ref={fileInput}
+      type="file"
+      multiple
+      hidden
+      onChange={(event) => {
+        const files = [...(event.target.files ?? [])];
+        if (files.length) addFiles(editor, files, filesAt.current);
+      }}
+    />
+  );
+
   if (inSlide) {
     return (
       <>
+        {picker}
         <EditorContent editor={editor} />
         <Footnotes editor={editor} onOpen={setNote} />
         <SelectionToolbar editor={editor} appendTo={() => document.body} />
@@ -374,6 +464,7 @@ export function Editor({
           <GripVertical aria-hidden />
         </span>
       </DragHandle>
+      {picker}
       <EditorContent editor={editor} />
       <Footnotes editor={editor} onOpen={setNote} />
       {dropLine &&

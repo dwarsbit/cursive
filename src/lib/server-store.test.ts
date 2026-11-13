@@ -43,6 +43,7 @@ describe("serverStore", () => {
     expect(project).toEqual({
       name: "Notes",
       folders: [],
+      files: [],
       pages: { "Home.md": "# Home\n" },
     });
 

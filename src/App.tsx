@@ -1,4 +1,4 @@
-import { PanelLeft, Play, Settings } from "lucide-react";
+import { History, PanelLeft, Play, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Editor, type EditorChange } from "@/components/Editor";
@@ -7,6 +7,10 @@ import { PageProperties } from "@/components/PageProperties";
 import { clampWidth, Sidebar, type DropPlace } from "@/components/Sidebar";
 import { HEADER_BUTTON } from "@/components/Dialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { Backlinks } from "@/components/PageLinks";
+import { FindBar, SearchDialog } from "@/components/Search";
+import { HistoryDialog } from "@/components/HistoryDialog";
+import type { PageSnapshot } from "@/lib/page-history";
 import { ExportDialog } from "@/export/ExportDialog";
 import { ReferencesProvider } from "@/references/context";
 import {
@@ -37,6 +41,7 @@ import {
   buildTree,
   countPages,
   fileNameFor,
+  freeFilePath,
   freePath,
   orderPages,
   parentOf,
@@ -47,6 +52,15 @@ import {
   type TreeNode,
 } from "@/lib/project";
 import { dragWindow } from "@/lib/platform";
+import {
+  backlinks,
+  linkIndex,
+  linkablePages,
+  rebaseLinks,
+  retargetLinks,
+} from "@/lib/links";
+import { WorkspaceProvider, type Workspace } from "@/lib/workspace";
+import { openFind } from "@/lib/find";
 import {
   emptySlide,
   isPresentation,
@@ -131,6 +145,10 @@ export default function App({
     setProject(next);
   };
   const [active, setActive] = useState<string | null>(null);
+  // Counts the changes to the project's files, so images show their new bytes.
+  const [filesVersion, setFilesVersion] = useState(0);
+  // The open page's title and path as links last knew them.
+  const linked = useRef<{ path: string; title: string } | null>(null);
   // Counts the times a page or a mode was opened: each one starts a fresh editor.
   const [opened, setOpened] = useState(0);
   const [mode, setMode] = useState(loadMode);
@@ -141,6 +159,10 @@ export default function App({
   const [navOpen, setNavOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [settings, setSettings] = useState(false);
+  // The find bar of the open page, and the search of the project.
+  const [finding, setFinding] = useState<{ text: string; replace: boolean } | null>(null);
+  const [searching, setSearching] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   // The slide a presentation opens at: the one picked in the sidebar.
   const [startSlide, setStartSlide] = useState(0);
   const [sidebarWidth, setSidebarWidth] = useState(() =>
@@ -215,6 +237,21 @@ export default function App({
     () => store.subscribe?.((changes) => takeChanges.current(changes)),
     [store],
   );
+  useEffect(
+    () =>
+      store.onFiles?.((files) => {
+        if (fresh.current) commit({ ...fresh.current, files });
+        setFilesVersion((n) => n + 1);
+      }),
+    [store],
+  );
+
+  // Links name the open page by its title as it was when the page was opened.
+  useEffect(() => {
+    const source = active ? fresh.current?.pages[active] : undefined;
+    if (!active || source === undefined || linked.current?.path === active) return;
+    linked.current = { path: active, title: readPage(source).title.trim() };
+  }, [active]);
 
   const tree = useMemo(() => (project ? buildTree(project) : []), [project]);
   // The presentations, each with what its slides are called.
@@ -257,7 +294,7 @@ export default function App({
    * typed. Returns the project as it is after that.
    */
   const syncFileName = (): Project | null => {
-    if (!project || !active || !page?.title.trim()) return project;
+    if (!project || !active || !page?.title.trim()) return retitleLinks(project);
     const wanted = freePath(
       project,
       parentOf(active),
@@ -265,13 +302,64 @@ export default function App({
       ".md",
       active,
     );
-    if (wanted === active) return project;
+    if (wanted === active) return retitleLinks(project);
     const renamed = renameIn(project, active, wanted);
     commit(renamed);
     setActive(wanted);
     saveOpenPage(wanted);
     void persist(store.rename(active, wanted));
-    return renamed;
+    return retitleLinks(renamed, wanted);
+  };
+
+  /**
+   * After the open page got another title or path: links in other pages
+   * that named it the old way name it the new way. Returns the project
+   * with those pages changed.
+   */
+  const retitleLinks = (current: Project | null, path = active): Project | null => {
+    const known = linked.current;
+    if (!current || !path || !known || !(path in current.pages)) return current;
+    const title = readPage(current.pages[path]).title.trim();
+    linked.current = { path, title };
+    // A new page had no title that links could name.
+    if (!known.title || (known.path === path && known.title === title)) return current;
+    // The pages as they were before: the page under its old path and title.
+    const before = { ...current.pages };
+    delete before[path];
+    before[known.path] = writePage({ ...readPage(current.pages[path]), title: known.title });
+    return relink(current, before, known.path, path);
+  };
+
+  /** Writes the pages whose links to a page that moved or got a new title must change. */
+  const relink = (
+    current: Project,
+    before: Record<string, string>,
+    from: string,
+    to: string,
+  ): Project => {
+    const writes = retargetLinks(before, current.pages, from, to);
+    if (!writes.length) return current;
+    const next = { ...current, pages: { ...current.pages, ...Object.fromEntries(writes) } };
+    commit(next);
+    for (const [file, text] of writes) void persist(store.writePage(file, text));
+    return next;
+  };
+
+  /** Puts the open page back as a snapshot has it; the page as it is now is kept first. */
+  const restoreSnapshot = async (snapshot: PageSnapshot) => {
+    const history = store.history;
+    if (!active || !history) return;
+    if (history.restore) {
+      // The store puts it back; the change arrives like one from elsewhere.
+      await history.restore(active, snapshot);
+      return;
+    }
+    await history.keep?.(active, snapshot.source);
+    const latest = fresh.current;
+    if (!latest || !(active in latest.pages)) return;
+    commit({ ...latest, pages: { ...latest.pages, [active]: snapshot.source } });
+    setOpened((n) => n + 1);
+    await store.writePage(active, snapshot.source);
   };
 
   const open = (path: string, slide = 0) => {
@@ -317,9 +405,31 @@ export default function App({
         event.stopPropagation();
         setExporting(true);
       }
+      // Cmd/Ctrl + F finds in the page, with Shift it searches the project.
+      if (event.key.toLowerCase() === "f" && (event.metaKey || event.ctrlKey) && !event.altKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        const selected = window.getSelection()?.toString().trim() ?? "";
+        const text = selected.includes("\n") ? "" : selected;
+        if (event.shiftKey) setSearching(text);
+        else openFind(text || undefined);
+      }
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
+
+  // The find bar opens on request: from the keys, or from the search.
+  useEffect(() => {
+    const show = (event: Event) => {
+      const { text, replace } = (event as CustomEvent<{ text?: string; replace?: boolean }>).detail;
+      setFinding((current) => ({
+        text: text ?? current?.text ?? "",
+        replace: Boolean(replace) || Boolean(current?.replace),
+      }));
+    };
+    window.addEventListener("cursive:find", show);
+    return () => window.removeEventListener("cursive:find", show);
   }, []);
 
   // The citation menu asks for the settings when Zotero isn't set up.
@@ -337,10 +447,10 @@ export default function App({
     saveClosedFolders([...next]);
   };
 
-  const newPage = (folder: string, file = "") => {
+  const newPage = (folder: string, file = "", title = "") => {
     const current = syncFileName();
     if (!current) return;
-    const path = freePath(current, folder, "Untitled", ".md");
+    const path = freePath(current, folder, title ? fileNameFor(title) : "Untitled", ".md");
     commit({ ...current, pages: { ...current.pages, [path]: file } });
     setActive(path);
     setOpened((n) => n + 1);
@@ -352,7 +462,38 @@ export default function App({
     void persist(store.writePage(path, file));
     // A page's title is typed on the page, a presentation's in the sidebar.
     if (file === NEW_PRESENTATION) setRenaming(path);
+    else if (title) requestAnimationFrame(() => focusEditor.current?.());
     else requestAnimationFrame(() => titleInput.current?.focus());
+  };
+
+  /** Adds files to the project's attachments folder. Gives their paths, in the same order. */
+  const addFiles = async (files: File[]): Promise<string[]> => {
+    if (!store.writeFile) return [];
+    const paths: string[] = [];
+    for (const file of files) {
+      const current = fresh.current;
+      if (!current) break;
+      // A pasted picture has no name of its own.
+      const stamp = new Date().toISOString().slice(0, 19).replace("T", " ").replace(/:/g, ".");
+      const name = /^image\.\w+$/i.test(file.name)
+        ? `Pasted image ${stamp}${file.name.slice(file.name.lastIndexOf("."))}`
+        : file.name || `File ${stamp}`;
+      const path = freeFilePath(current, name);
+      try {
+        await store.writeFile(path, file);
+      } catch (error) {
+        setProblem(error instanceof Error ? error.message : String(error));
+        continue;
+      }
+      const latest = fresh.current ?? current;
+      commit({ ...latest, files: [...(latest.files ?? []), path].sort() });
+      paths.push(path);
+    }
+    if (paths.length) {
+      setFilesVersion((n) => n + 1);
+      setProblem(null);
+    }
+    return paths;
   };
 
   const newFolder = () => {
@@ -367,7 +508,19 @@ export default function App({
     if (!project) return;
     const wanted = freePath(project, parentOf(path), fileNameFor(name), "", path);
     if (wanted === path) return;
-    commit(renameIn(project, path, wanted));
+    let renamed = renameIn(project, path, wanted);
+    commit(renamed);
+    for (const page of Object.keys(project.pages)) {
+      if (page.startsWith(`${path}/`)) {
+        renamed = relink(renamed, project.pages, page, wanted + page.slice(path.length));
+      }
+    }
+    if (linked.current?.path.startsWith(`${path}/`)) {
+      linked.current = {
+        ...linked.current,
+        path: wanted + linked.current.path.slice(path.length),
+      };
+    }
     if (active?.startsWith(`${path}/`)) {
       const moved = wanted + active.slice(path.length);
       setActive(moved);
@@ -388,8 +541,11 @@ export default function App({
     const wanted = title.trim()
       ? freePath(titled, parentOf(path), fileNameFor(title), ".md", path)
       : path;
-    commit(wanted === path ? titled : renameIn(titled, path, wanted));
+    const renamed = wanted === path ? titled : renameIn(titled, path, wanted);
+    commit(renamed);
     if (wanted !== path) void persist(store.rename(path, wanted));
+    relink(renamed, project.pages, path, wanted);
+    if (path === active) linked.current = { path: wanted, title: title.trim() };
     if (path !== active) return;
     setOpened((n) => n + 1);
     if (wanted !== path) {
@@ -426,6 +582,16 @@ export default function App({
       moved = freePath(project, folder, baseName(path).replace(/\.md$/i, ""), ".md");
       next = renameIn(project, path, moved);
       void persist(store.rename(path, moved));
+      // Its images and links point where they did before.
+      const page = readPage(next.pages[moved]);
+      const markdown = rebaseLinks(page.markdown, parentOf(path), folder);
+      if (markdown !== page.markdown) {
+        const file = writePage({ ...page, markdown });
+        next = { ...next, pages: { ...next.pages, [moved]: file } };
+        void persist(store.writePage(moved, file));
+      }
+      next = relink(next, project.pages, path, moved);
+      if (linked.current?.path === path) linked.current = { ...linked.current, path: moved };
       if (folder) setFolderOpen(folder, true);
       if (active === path) {
         setActive(moved);
@@ -491,6 +657,49 @@ export default function App({
     document.title = title ? `${title} · Cursive` : "Cursive";
   }, [title]);
 
+  const pages = project?.pages;
+  const files = project?.files;
+  const pageList = useMemo(() => linkablePages({ name: "", folders: [], pages: pages ?? {} }), [pages]);
+  const index = useMemo(() => linkIndex(pages ?? {}), [pages]);
+  const linkedFrom = useMemo(
+    () => (pages && active && !isDeck ? backlinks(pages, active) : []),
+    [pages, active, isDeck],
+  );
+  const fileSet = useMemo(() => new Set(files ?? []), [files]);
+  const latestActions = useRef({ open, newPage, addFiles });
+  useEffect(() => {
+    latestActions.current = { open, newPage, addFiles };
+  });
+  const fileUrl = useMemo(
+    () => (path: string) => store.fileUrl?.(path) ?? Promise.resolve(null),
+    [store],
+  );
+  const workspace = useMemo<Workspace>(
+    () => ({
+      pages: pageList,
+      index,
+      active,
+      openPage: (path) => latestActions.current.open(path),
+      createPage: (title) =>
+        latestActions.current.newPage(
+          active ? parentOf(active) : "",
+          writePage({ title, properties: "", markdown: "" }),
+          title,
+        ),
+      files: fileSet,
+      filesVersion,
+      fileUrl,
+      openFile: (path) => {
+        void store.openFile?.(path).catch((error: unknown) =>
+          setProblem(error instanceof Error ? error.message : String(error)),
+        );
+      },
+      addFiles: (added) => latestActions.current.addFiles(added),
+      canAddFiles: Boolean(store.writeFile),
+    }),
+    [pageList, index, active, fileSet, filesVersion, fileUrl, store],
+  );
+
   if (!project) {
     return (
       <div className="grid h-full place-items-center p-6 text-center">
@@ -555,10 +764,11 @@ export default function App({
         onDelete={setDeleting}
         onSwitchProject={onSwitchProject}
         switchLabel={switchLabel}
+        onSearch={() => setSearching("")}
       />
       <div className="scrim" onClick={() => setNavOpen(false)} />
 
-      <main className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] bg-card shadow-[0_1px_2px_oklch(14.5%_0.008_326/5%),0_0_0_1px_var(--border)]">
+      <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] bg-card shadow-[0_1px_2px_oklch(14.5%_0.008_326/5%),0_0_0_1px_var(--border)]">
         <header
           className="flex h-11 flex-none items-center gap-2 px-3 text-xs"
           onPointerDown={dragWindow}
@@ -621,6 +831,17 @@ export default function App({
               <span className="present-label">Present</span>
             </button>
           )}
+          {page && store.history && (
+            <button
+              type="button"
+              className="inline-flex size-6 flex-none items-center justify-center rounded-[5px] text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="History"
+              title="History"
+              onClick={() => setShowHistory(true)}
+            >
+              <History className="size-3.5" aria-hidden />
+            </button>
+          )}
           {page && (
             <button
               type="button"
@@ -643,6 +864,13 @@ export default function App({
           {actions}
         </header>
 
+        {finding && page && (
+          <FindBar
+            text={finding.text}
+            replacing={finding.replace}
+            onClose={() => setFinding(null)}
+          />
+        )}
         <div
           className="min-h-0 flex-1 overflow-y-auto"
           id="page-scroll"
@@ -707,6 +935,7 @@ export default function App({
                 focusRef={focusEditor}
                 focusEndRef={focusEditorEnd}
               />
+              <Backlinks links={linkedFrom} />
             </article>
           ) : (
             <MarkdownEditor
@@ -764,17 +993,43 @@ export default function App({
         />
       )}
       {settings && <SettingsDialog onClose={() => setSettings(false)} />}
+      {showHistory && active && source !== null && store.history && (
+        <HistoryDialog
+          title={page?.title.trim() || "Untitled"}
+          path={active}
+          source={source}
+          history={store.history}
+          hourly={store.place === "account"}
+          onRestore={restoreSnapshot}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
+      {searching !== null && (
+        <SearchDialog
+          pages={project.pages}
+          initial={searching}
+          onClose={() => setSearching(null)}
+          onOpen={(path, query) => {
+            setSearching(null);
+            if (path !== active) open(path);
+            // The page opens first, then the find bar marks the query in it.
+            requestAnimationFrame(() => openFind(query));
+          }}
+        />
+      )}
     </div>
   );
 
   return (
-    <ReferencesProvider
-      markdown={page?.markdown ?? ""}
-      page={active}
-      live
-      addElsewhere={addElsewhere}
-    >
-      {shell}
-    </ReferencesProvider>
+    <WorkspaceProvider value={workspace}>
+      <ReferencesProvider
+        markdown={page?.markdown ?? ""}
+        page={active}
+        live
+        addElsewhere={addElsewhere}
+      >
+        {shell}
+      </ReferencesProvider>
+    </WorkspaceProvider>
   );
 }

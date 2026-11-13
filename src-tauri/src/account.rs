@@ -129,7 +129,7 @@ pub fn server() -> Result<String, String> {
     normalize_server(&std::env::var("CURSIVE_SERVER").unwrap_or_default())
 }
 
-fn client() -> Result<reqwest::Client, String> {
+pub(crate) fn client() -> Result<reqwest::Client, String> {
     reqwest::Client::builder()
         .timeout(HTTP_TIMEOUT)
         .user_agent(concat!("Cursive/", env!("CARGO_PKG_VERSION")))
@@ -325,7 +325,7 @@ fn wait_for_code(
     }
 }
 
-async fn error_message(response: reqwest::Response) -> String {
+pub(crate) async fn error_message(response: reqwest::Response) -> String {
     let status = response.status();
     match response.json::<ErrorResponse>().await {
         Ok(body) => body.message,
@@ -409,7 +409,7 @@ fn load(store: &impl Store) -> Option<Credential> {
 
 /// The stored token for `server`; None when signed out or signed in
 /// to another server.
-fn token_with(server: &str, store: &impl Store) -> Option<String> {
+pub(crate) fn token_with(server: &str, store: &impl Store) -> Option<String> {
     load(store)
         .filter(|credential| credential.server == server)
         .map(|credential| credential.token)

@@ -12,12 +12,18 @@ export interface Project {
   folders: string[];
   /** Each page's file, by path. */
   pages: Record<string, string>;
+  /** The project's other files, such as images and attachments, by path. */
+  files?: string[];
 }
+
+/** The folder a project keeps its images and attached files in. */
+export const ATTACHMENTS = "attachments";
 
 /**
  * Where a project is kept: a folder on disk in the desktop app, the
  * account in the browser, or the browser's own storage for the demo.
- */
+ */import type { PageHistory } from "./page-history";
+
 export interface ProjectStore {
   /** Where the project is kept, for the status bar and the delete question. */
   place: "browser" | "disk" | "account";
@@ -33,6 +39,16 @@ export interface ProjectStore {
   rename(from: string, to: string): Promise<void>;
   /** Deletes a page, or a folder with everything in it. */
   remove(path: string): Promise<void>;
+  /** Adds a file that isn't a page, such as an image, or replaces it. */
+  writeFile?(path: string, data: Blob): Promise<void>;
+  /** An address the window can show a file at; null when the file can't be read. */
+  fileUrl?(path: string): Promise<string | null>;
+  /** Opens a file in the app your computer opens it with, or saves it. */
+  openFile?(path: string): Promise<void>;
+  /** Tells of files that changed outside this window. Gives every file the project has. */
+  onFiles?(listener: (files: string[]) => void): () => void;
+  /** Earlier versions of the pages. */
+  history?: PageHistory;
 }
 
 export interface TreeNode {
@@ -89,7 +105,19 @@ export function buildTree(project: Project): TreeNode[] {
     folder(parentOf(path)).push(node);
     return node.children;
   };
-  [...project.folders].sort().forEach(folder);
+  const hasPages = (dir: string) =>
+    Object.keys(project.pages).some((path) => path.startsWith(`${dir}/`));
+  [...project.folders]
+    .filter(
+      // The attachments folder holds files the pages show, not pages of the tree.
+      (path) =>
+        !(
+          (path === ATTACHMENTS || path.startsWith(`${ATTACHMENTS}/`)) &&
+          !hasPages(path)
+        ),
+    )
+    .sort()
+    .forEach(folder);
   for (const [path, source] of Object.entries(project.pages)) {
     folder(parentOf(path)).push({
       kind: "page",
@@ -175,7 +203,8 @@ const taken = (project: Project, path: string) => {
   const lower = path.toLowerCase();
   return (
     Object.keys(project.pages).some((p) => p.toLowerCase() === lower) ||
-    project.folders.some((f) => f.toLowerCase() === lower)
+    project.folders.some((f) => f.toLowerCase() === lower) ||
+    (project.files ?? []).some((f) => f.toLowerCase() === lower)
   );
 };
 
@@ -197,6 +226,20 @@ export function freePath(
   }
 }
 
+/**
+ * A free path in the attachments folder for a file named `name`:
+ * "chart.png", then "chart 2.png".
+ */
+export function freeFilePath(project: Project, name: string): string {
+  const dot = name.lastIndexOf(".");
+  const stem = fileNameFor(dot > 0 ? name.slice(0, dot) : name);
+  const extension = dot > 0 ? name.slice(dot).toLowerCase().replace(/[^.a-z0-9]/g, "") : "";
+  for (let n = 1; ; n++) {
+    const path = join(ATTACHMENTS, `${n === 1 ? stem : `${stem} ${n}`}${extension}`);
+    if (!taken(project, path)) return path;
+  }
+}
+
 /** The project with a page or folder moved; a folder takes its contents along. */
 export function renameIn(project: Project, from: string, to: string): Project {
   if (from === to) return project;
@@ -212,6 +255,7 @@ export function renameIn(project: Project, from: string, to: string): Project {
     pages: Object.fromEntries(
       Object.entries(project.pages).map(([path, source]) => [move(path), source]),
     ),
+    ...(project.files ? { files: project.files.map(move) } : {}),
   };
 }
 
@@ -222,6 +266,7 @@ export function removeFrom(project: Project, path: string): Project {
     ...project,
     folders: project.folders.filter((f) => !gone(f)),
     pages: Object.fromEntries(Object.entries(project.pages).filter(([p]) => !gone(p))),
+    ...(project.files ? { files: project.files.filter((f) => !gone(f)) } : {}),
   };
 }
 

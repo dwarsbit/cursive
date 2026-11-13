@@ -1,16 +1,30 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import type { Project, ProjectStore } from "./project";
+import { mediaType } from "./file-types";
 import {
   diffPages,
   LAYOUT,
+  readAssets,
   readPages,
   removeFromDoc,
   renameInDoc,
+  writeAsset,
   writeDocPage,
+  type AssetRef,
   type PageChange,
 } from "./project-doc";
-import type { Server } from "./server";
+import { browserSaveFile, type Server } from "./server";
+import { distinctSnapshots, type PageHistory, type PageSnapshot } from "./page-history";
+
+/** How many of the server's snapshots a page's history looks through. */
+const ACCOUNT_SNAPSHOTS = 40;
+
+/** The SHA-256 of some bytes, in lowercase hex. */
+export async function sha256(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 /** How the project's document reaches the server. Tests connect their own. */
 export interface Connection {
@@ -75,6 +89,11 @@ export function serverStore(
   const doc = new Y.Doc();
   const LOCAL = "cursive";
   const listeners = new Set<(changes: PageChange[]) => void>();
+  const fileListeners = new Set<(files: string[]) => void>();
+  // The files as the app last saw them.
+  let seenFiles: Record<string, AssetRef> = {};
+  const assetUrl = (ref: AssetRef) =>
+    `/api/projects/${encodeURIComponent(id)}/assets/${ref.hash}`;
   let connection: Connection | null = null;
   let closed = false;
   // The pages as the app last saw them.
@@ -88,6 +107,15 @@ export function serverStore(
     const changes = origin === LOCAL ? [] : diffPages(seen, pages);
     seen = pages;
     if (changes.length > 0) listeners.forEach((listener) => listener(changes));
+    const files = readAssets(doc);
+    const changed =
+      Object.keys(files).length !== Object.keys(seenFiles).length ||
+      Object.entries(files).some(([path, ref]) => seenFiles[path]?.hash !== ref.hash);
+    seenFiles = files;
+    if (changed && origin !== LOCAL) {
+      const list = Object.keys(files).sort();
+      fileListeners.forEach((listener) => listener(list));
+    }
   });
 
   const change = (work: () => void) => {
@@ -95,8 +123,40 @@ export function serverStore(
     return Promise.resolve();
   };
 
+  // The snapshots the server keeps of the whole project, read once each.
+  const snapshots = new Map<string, Promise<Record<string, string>>>();
+  const snapshotPages = (snapshotId: string) => {
+    let found = snapshots.get(snapshotId);
+    if (!found) {
+      found = server.snapshot(id, snapshotId);
+      found.catch(() => snapshots.delete(snapshotId));
+      snapshots.set(snapshotId, found);
+    }
+    return found;
+  };
+  const history: PageHistory = {
+    list: async (path) => {
+      const list = (await server.history(id)).slice(0, ACCOUNT_SNAPSHOTS);
+      const found: PageSnapshot[] = [];
+      // A few at a time, so a long history doesn't hold up the server.
+      for (let at = 0; at < list.length; at += 4) {
+        const batch = list.slice(at, at + 4);
+        const pages = await Promise.all(batch.map((item) => snapshotPages(item.id)));
+        batch.forEach((item, index) => {
+          const source = pages[index][path];
+          if (source !== undefined) {
+            found.push({ id: item.id, at: Date.parse(item.createdAt), source });
+          }
+        });
+      }
+      return distinctSnapshots(found);
+    },
+    restore: (path, snapshot) => server.restore(id, snapshot.id, [path]),
+  };
+
   return {
     place: "account",
+    history,
     load: async (): Promise<Project> => {
       const [info, opened] = await Promise.all([server.project(id), connect(id, doc)]);
       if (closed) {
@@ -109,7 +169,33 @@ export function serverStore(
         doc.transact(() => doc.getMap("meta").set("layout", LAYOUT), LOCAL);
       }
       seen = readPages(doc);
-      return { name: info.name, folders, pages: { ...seen } };
+      seenFiles = readAssets(doc);
+      return {
+        name: info.name,
+        folders,
+        pages: { ...seen },
+        files: Object.keys(seenFiles).sort(),
+      };
+    },
+    onFiles: (listener) => {
+      fileListeners.add(listener);
+      return () => fileListeners.delete(listener);
+    },
+    writeFile: async (path, data) => {
+      const bytes = new Uint8Array(await data.arrayBuffer());
+      const type = data.type || mediaType(path);
+      const hash = await sha256(bytes);
+      // The bytes go first, so every file the document names can be fetched.
+      await server.uploadAsset(id, hash, bytes, type);
+      await change(() => writeAsset(doc, path, { hash, size: bytes.length, type }));
+    },
+    fileUrl: async (path) => {
+      const ref = readAssets(doc)[path];
+      return ref ? assetUrl(ref) : null;
+    },
+    openFile: async (path) => {
+      const ref = readAssets(doc)[path];
+      if (ref) await browserSaveFile(assetUrl(ref), path.slice(path.lastIndexOf("/") + 1));
     },
     subscribe: (listener) => {
       listeners.add(listener);

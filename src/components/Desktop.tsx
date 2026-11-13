@@ -89,11 +89,25 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
     (project) => project.writable,
     () => true,
   );
+  const projectId = link.projectId;
   const sync = folderSync({
     server,
     folder: store.folder,
     link,
     writable,
+    transfer: {
+      stored: async () => new Set((await server.assets(projectId)).map((a) => a.hash)),
+      upload: (path, ref) =>
+        invoke<void>("link_upload_file", {
+          dir,
+          path,
+          projectId,
+          hash: ref.hash,
+          contentType: ref.type,
+        }),
+      download: (path, ref) =>
+        invoke<void>("link_download_file", { dir, path, projectId, hash: ref.hash }),
+    },
     saveLink: (next) =>
       invoke<void>("link_save", { dir, projectId: next.projectId, state: next.state }),
   });
@@ -111,7 +125,9 @@ async function openSession(dir: string, signedIn: boolean): Promise<Session> {
       return store.load();
     },
     subscribe: sync.onChanges,
+    onFiles: sync.onFiles,
     writePage: (path, source) => touched(store.writePage(path, source)),
+    writeFile: (path, data) => touched(store.writeFile!(path, data)),
     rename: (from, to) => touched(store.rename(from, to)),
     remove: (path) => touched(store.remove(path)),
   };

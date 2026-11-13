@@ -9,6 +9,8 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { common, createLowlight } from "lowlight";
 import { Callout } from "./callout";
 import { Footnote } from "./footnote";
+import { Attachment, Image, InlineImage } from "./media";
+import { PageLink } from "./page-link";
 import { Toggle, ToggleContent, ToggleSummary } from "./toggle";
 import { Bibliography, Citation } from "@/references/nodes";
 import { TUTORIAL_NODES } from "@/tutorial/nodes";
@@ -48,6 +50,10 @@ export function documentExtensions(
     Citation,
     Bibliography,
     overrides.footnote ?? Footnote,
+    PageLink,
+    Image,
+    InlineImage,
+    Attachment,
     Markdown,
   ];
 }
