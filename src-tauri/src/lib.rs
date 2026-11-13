@@ -1,5 +1,6 @@
 mod account;
 mod files;
+mod history;
 mod link;
 mod project;
 mod projects;
@@ -24,6 +25,8 @@ pub fn run() {
             project::project_create_folder,
             project::project_rename,
             project::project_remove,
+            history::project_history_list,
+            history::project_history_keep,
             project::project_files,
             project::project_read_file,
             project::project_write_file,

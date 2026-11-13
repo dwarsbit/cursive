@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { mediaType } from "./file-types";
 import type { Folder } from "./link-sync";
 import type { AssetRef } from "./project-doc";
+import type { PageHistory } from "./page-history";
 import type { Project, ProjectStore } from "./project";
 
 /** Is this the desktop app, not the browser build? */
@@ -76,9 +77,25 @@ export function desktopStore(
     throw new Error(typeof error === "string" ? error : String(error));
   };
 
+  const history: PageHistory = {
+    list: async (path) => {
+      await flush().catch(() => {});
+      const found = await invoke<Array<{ at: number; source: string }>>("project_history_list", {
+        dir,
+        path,
+      }).catch(fail);
+      return found.map((snapshot) => ({ id: String(snapshot.at), ...snapshot }));
+    },
+    keep: async (path) => {
+      await flush().catch(() => {});
+      return enqueue(() => invoke<void>("project_history_keep", { dir, path })).catch(fail);
+    },
+  };
+
   return {
     place: "disk",
     flush,
+    history,
     // The folder as a sync run uses it: in line with the app's own changes.
     folder: {
       read: async () => {

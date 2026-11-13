@@ -22,7 +22,8 @@ export const ATTACHMENTS = "attachments";
 /**
  * Where a project is kept: a folder on disk in the desktop app, the
  * account in the browser, or the browser's own storage for the demo.
- */
+ */import type { PageHistory } from "./page-history";
+
 export interface ProjectStore {
   /** Where the project is kept, for the status bar and the delete question. */
   place: "browser" | "disk" | "account";
@@ -46,6 +47,8 @@ export interface ProjectStore {
   openFile?(path: string): Promise<void>;
   /** Tells of files that changed outside this window. Gives every file the project has. */
   onFiles?(listener: (files: string[]) => void): () => void;
+  /** Earlier versions of the pages. */
+  history?: PageHistory;
 }
 
 export interface TreeNode {

@@ -287,6 +287,15 @@ export class Server {
     return Object.fromEntries(found.files.map((file) => [file.path, file.text]));
   }
 
+  /** Puts pages back as a snapshot holds them; the server keeps the project as it is first. */
+  restore(id: string, snapshotId: string, paths: string[]): Promise<void> {
+    return this.call(
+      "POST",
+      `/api/projects/${encodeURIComponent(id)}/history/${encodeURIComponent(snapshotId)}/restore`,
+      { json: { paths } },
+    );
+  }
+
   site(id: string): Promise<SiteState> {
     return this.call("GET", `/api/projects/${encodeURIComponent(id)}/site`);
   }

@@ -1,4 +1,4 @@
-import { PanelLeft, Play, Settings } from "lucide-react";
+import { History, PanelLeft, Play, Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Editor, type EditorChange } from "@/components/Editor";
@@ -8,6 +8,9 @@ import { clampWidth, Sidebar, type DropPlace } from "@/components/Sidebar";
 import { HEADER_BUTTON } from "@/components/Dialog";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { Backlinks } from "@/components/PageLinks";
+import { FindBar, SearchDialog } from "@/components/Search";
+import { HistoryDialog } from "@/components/HistoryDialog";
+import type { PageSnapshot } from "@/lib/page-history";
 import { ExportDialog } from "@/export/ExportDialog";
 import { ReferencesProvider } from "@/references/context";
 import {
@@ -57,6 +60,7 @@ import {
   retargetLinks,
 } from "@/lib/links";
 import { WorkspaceProvider, type Workspace } from "@/lib/workspace";
+import { openFind } from "@/lib/find";
 import {
   emptySlide,
   isPresentation,
@@ -155,6 +159,10 @@ export default function App({
   const [navOpen, setNavOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [settings, setSettings] = useState(false);
+  // The find bar of the open page, and the search of the project.
+  const [finding, setFinding] = useState<{ text: string; replace: boolean } | null>(null);
+  const [searching, setSearching] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   // The slide a presentation opens at: the one picked in the sidebar.
   const [startSlide, setStartSlide] = useState(0);
   const [sidebarWidth, setSidebarWidth] = useState(() =>
@@ -337,6 +345,23 @@ export default function App({
     return next;
   };
 
+  /** Puts the open page back as a snapshot has it; the page as it is now is kept first. */
+  const restoreSnapshot = async (snapshot: PageSnapshot) => {
+    const history = store.history;
+    if (!active || !history) return;
+    if (history.restore) {
+      // The store puts it back; the change arrives like one from elsewhere.
+      await history.restore(active, snapshot);
+      return;
+    }
+    await history.keep?.(active, snapshot.source);
+    const latest = fresh.current;
+    if (!latest || !(active in latest.pages)) return;
+    commit({ ...latest, pages: { ...latest.pages, [active]: snapshot.source } });
+    setOpened((n) => n + 1);
+    await store.writePage(active, snapshot.source);
+  };
+
   const open = (path: string, slide = 0) => {
     if (path !== active) {
       syncFileName();
@@ -380,9 +405,31 @@ export default function App({
         event.stopPropagation();
         setExporting(true);
       }
+      // Cmd/Ctrl + F finds in the page, with Shift it searches the project.
+      if (event.key.toLowerCase() === "f" && (event.metaKey || event.ctrlKey) && !event.altKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        const selected = window.getSelection()?.toString().trim() ?? "";
+        const text = selected.includes("\n") ? "" : selected;
+        if (event.shiftKey) setSearching(text);
+        else openFind(text || undefined);
+      }
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
+
+  // The find bar opens on request: from the keys, or from the search.
+  useEffect(() => {
+    const show = (event: Event) => {
+      const { text, replace } = (event as CustomEvent<{ text?: string; replace?: boolean }>).detail;
+      setFinding((current) => ({
+        text: text ?? current?.text ?? "",
+        replace: Boolean(replace) || Boolean(current?.replace),
+      }));
+    };
+    window.addEventListener("cursive:find", show);
+    return () => window.removeEventListener("cursive:find", show);
   }, []);
 
   // The citation menu asks for the settings when Zotero isn't set up.
@@ -717,10 +764,11 @@ export default function App({
         onDelete={setDeleting}
         onSwitchProject={onSwitchProject}
         switchLabel={switchLabel}
+        onSearch={() => setSearching("")}
       />
       <div className="scrim" onClick={() => setNavOpen(false)} />
 
-      <main className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] bg-card shadow-[0_1px_2px_oklch(14.5%_0.008_326/5%),0_0_0_1px_var(--border)]">
+      <main className="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] bg-card shadow-[0_1px_2px_oklch(14.5%_0.008_326/5%),0_0_0_1px_var(--border)]">
         <header
           className="flex h-11 flex-none items-center gap-2 px-3 text-xs"
           onPointerDown={dragWindow}
@@ -783,6 +831,17 @@ export default function App({
               <span className="present-label">Present</span>
             </button>
           )}
+          {page && store.history && (
+            <button
+              type="button"
+              className="inline-flex size-6 flex-none items-center justify-center rounded-[5px] text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="History"
+              title="History"
+              onClick={() => setShowHistory(true)}
+            >
+              <History className="size-3.5" aria-hidden />
+            </button>
+          )}
           {page && (
             <button
               type="button"
@@ -805,6 +864,13 @@ export default function App({
           {actions}
         </header>
 
+        {finding && page && (
+          <FindBar
+            text={finding.text}
+            replacing={finding.replace}
+            onClose={() => setFinding(null)}
+          />
+        )}
         <div
           className="min-h-0 flex-1 overflow-y-auto"
           id="page-scroll"
@@ -927,6 +993,30 @@ export default function App({
         />
       )}
       {settings && <SettingsDialog onClose={() => setSettings(false)} />}
+      {showHistory && active && source !== null && store.history && (
+        <HistoryDialog
+          title={page?.title.trim() || "Untitled"}
+          path={active}
+          source={source}
+          history={store.history}
+          hourly={store.place === "account"}
+          onRestore={restoreSnapshot}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
+      {searching !== null && (
+        <SearchDialog
+          pages={project.pages}
+          initial={searching}
+          onClose={() => setSearching(null)}
+          onOpen={(path, query) => {
+            setSearching(null);
+            if (path !== active) open(path);
+            // The page opens first, then the find bar marks the query in it.
+            requestAnimationFrame(() => openFind(query));
+          }}
+        />
+      )}
     </div>
   );
 

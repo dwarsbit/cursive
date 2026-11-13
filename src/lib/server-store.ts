@@ -15,6 +15,10 @@ import {
   type PageChange,
 } from "./project-doc";
 import { browserSaveFile, type Server } from "./server";
+import { distinctSnapshots, type PageHistory, type PageSnapshot } from "./page-history";
+
+/** How many of the server's snapshots a page's history looks through. */
+const ACCOUNT_SNAPSHOTS = 40;
 
 /** The SHA-256 of some bytes, in lowercase hex. */
 export async function sha256(bytes: Uint8Array): Promise<string> {
@@ -119,8 +123,40 @@ export function serverStore(
     return Promise.resolve();
   };
 
+  // The snapshots the server keeps of the whole project, read once each.
+  const snapshots = new Map<string, Promise<Record<string, string>>>();
+  const snapshotPages = (snapshotId: string) => {
+    let found = snapshots.get(snapshotId);
+    if (!found) {
+      found = server.snapshot(id, snapshotId);
+      found.catch(() => snapshots.delete(snapshotId));
+      snapshots.set(snapshotId, found);
+    }
+    return found;
+  };
+  const history: PageHistory = {
+    list: async (path) => {
+      const list = (await server.history(id)).slice(0, ACCOUNT_SNAPSHOTS);
+      const found: PageSnapshot[] = [];
+      // A few at a time, so a long history doesn't hold up the server.
+      for (let at = 0; at < list.length; at += 4) {
+        const batch = list.slice(at, at + 4);
+        const pages = await Promise.all(batch.map((item) => snapshotPages(item.id)));
+        batch.forEach((item, index) => {
+          const source = pages[index][path];
+          if (source !== undefined) {
+            found.push({ id: item.id, at: Date.parse(item.createdAt), source });
+          }
+        });
+      }
+      return distinctSnapshots(found);
+    },
+    restore: (path, snapshot) => server.restore(id, snapshot.id, [path]),
+  };
+
   return {
     place: "account",
+    history,
     load: async (): Promise<Project> => {
       const [info, opened] = await Promise.all([server.project(id), connect(id, doc)]);
       if (closed) {

@@ -322,7 +322,15 @@ pub fn project_load(dir: String) -> Result<Project, String> {
 }
 
 #[tauri::command]
-pub fn project_write_page(dir: String, path: String, source: String) -> Result<(), String> {
+pub fn project_write_page(
+    app: tauri::AppHandle,
+    dir: String,
+    path: String,
+    source: String,
+) -> Result<(), String> {
+    if is_page(&path) {
+        crate::history::keep_for(&app, &dir, &path, &source);
+    }
     write_page(&dir, &path, &source)
 }
 
@@ -376,13 +384,22 @@ pub fn project_create_folder(dir: String, path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn project_rename(dir: String, from: String, to: String) -> Result<(), String> {
-    rename(&dir, &from, &to)
+pub fn project_rename(
+    app: tauri::AppHandle,
+    dir: String,
+    from: String,
+    to: String,
+) -> Result<(), String> {
+    rename(&dir, &from, &to)?;
+    crate::history::rename_for(&app, &dir, &from, &to);
+    Ok(())
 }
 
 #[tauri::command]
-pub fn project_remove(dir: String, path: String) -> Result<(), String> {
-    remove(&dir, &path, Removal::Trash)
+pub fn project_remove(app: tauri::AppHandle, dir: String, path: String) -> Result<(), String> {
+    remove(&dir, &path, Removal::Trash)?;
+    crate::history::remove_for(&app, &dir, &path);
+    Ok(())
 }
 
 #[cfg(test)]
