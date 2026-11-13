@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-11-13)
 
 - Cite a work from Zotero: type `@` in a page and pick it from the Zotero app on your computer or your library at zotero.org. Click a citation to add the pages you cite.
 - See the works a page cites in a reference list at its end, in APA style. Add one with `/bibliography`, and remove a work no citation names any more.
