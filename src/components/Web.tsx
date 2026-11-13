@@ -11,7 +11,9 @@ import {
   type ServerProject,
 } from "@/lib/server";
 import { serverStore } from "@/lib/server-store";
+import { type Template, templatePages } from "@/templates";
 import { Mark } from "./Mark";
+import { TemplateDialog } from "./TemplateDialog";
 
 const server = new Server(browserTransport);
 
@@ -43,12 +45,38 @@ const day = (iso: string) =>
     year: "numeric",
   });
 
+/** Writes pages to a new project and waits until the server has them. */
+async function fill(id: string, pages: Record<string, string>) {
+  const store = serverStore(server, id);
+  try {
+    await store.load();
+    const saved = new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error("The template's pages couldn't be saved. Try again.")),
+        15_000,
+      );
+      store.onSaved(() => {
+        if (!store.saved()) return;
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+    for (const [path, source] of Object.entries(pages)) {
+      await store.writePage(path, source);
+    }
+    await saved;
+  } finally {
+    store.close();
+  }
+}
+
 /** The account's Cursive projects, and a field to start a new one. */
 function Projects({ account }: { account: Account }) {
   const [projects, setProjects] = useState<ServerProject[] | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [templates, setTemplates] = useState(false);
 
   useEffect(() => {
     document.title = "Projects · Cursive";
@@ -57,11 +85,15 @@ function Projects({ account }: { account: Account }) {
       .then(setProjects, (error: unknown) => setProblem(messageOf(error)));
   }, []);
 
-  const create = async () => {
+  const create = async (template?: Template) => {
     setBusy(true);
     setProblem(null);
     try {
-      const project = await server.createProject(name.trim() || "Notes", "online");
+      const project = await server.createProject(
+        name.trim() || template?.name || "Notes",
+        "online",
+      );
+      if (template) await fill(project.id, templatePages(template.id));
       go(`${BASE}${project.id}`);
     } catch (error) {
       setProblem(messageOf(error));
@@ -102,9 +134,28 @@ function Projects({ account }: { account: Account }) {
           <button type="submit" className={PRIMARY_BUTTON} disabled={busy}>
             New project
           </button>
+          <button
+            type="button"
+            className={BUTTON}
+            disabled={busy}
+            onClick={() => {
+              setProblem(null);
+              setTemplates(true);
+            }}
+          >
+            From a template…
+          </button>
         </form>
 
-        {problem && (
+        {templates && (
+          <TemplateDialog
+            busy={busy}
+            problem={problem}
+            onPick={(template) => void create(template)}
+            onClose={() => setTemplates(false)}
+          />
+        )}
+        {problem && !templates && (
           <p className="mt-3 text-[13px] text-destructive" role="alert">
             {problem}
           </p>

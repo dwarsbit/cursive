@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 (unreleased)
+
+- Start a project from a template: lecture notes, lab report, literature review, research paper, thesis outline, reading notes, conference talk, lecture slides, thesis defense or course module. Pick one with "Start from a template…" on the start screen of the desktop app, or "From a template…" in your browser. The project gets the template's pages, with placeholder text to write over.
+
 ## 0.2.0 (2026-11-13)
 
 - Cite a work from Zotero: type `@` in a page and pick it from the Zotero app on your computer or your library at zotero.org. Click a citation to add the pages you cite.
