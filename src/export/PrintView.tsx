@@ -102,11 +102,11 @@ export function PrintView({ job, onReady }: { job: ExportJob; onReady: () => voi
       {job.parts.map((part) => (
         <PagePathProvider key={part.path} value={part.path}>
           {part.kind === "slides" && job.format === "slides" ? (
-            <ReferencesProvider markdown={partMarkdown(part)}>
+            <ReferencesProvider markdown={partMarkdown(part)} style={part.style}>
               <Slides part={part} notes={false} />
             </ReferencesProvider>
           ) : (
-            <ReferencesProvider markdown={partMarkdown(part)}>
+            <ReferencesProvider markdown={partMarkdown(part)} style={part.style}>
               <section className="print-part">
                 <h1 className="print-title">{part.title}</h1>
                 {part.kind === "slides" ? (

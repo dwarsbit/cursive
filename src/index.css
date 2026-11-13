@@ -1978,6 +1978,32 @@
   width: 14px;
   height: 14px;
 }
+.doc .bib-style {
+  height: 24px;
+  margin-bottom: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+.doc .bib-style:hover,
+.doc .bib-style:focus-visible {
+  color: var(--foreground);
+}
+.doc .bib-numbered .bib-entry {
+  padding-left: 2.6em;
+  text-indent: -2.6em;
+}
+.doc .bib-number {
+  display: inline-block;
+  width: 2.6em;
+  text-indent: 0;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
 .doc .bib-list {
   list-style: none;
   margin: 0;

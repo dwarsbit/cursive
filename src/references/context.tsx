@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { citedKeys, pageReferences, sameContent, type Reference } from "./reference";
+import { numberWorks, styleById, type CitationStyle } from "./styles";
 import { activeSources } from "./sources";
 import {
   fetchZoteroItems,
@@ -15,8 +16,14 @@ export type ReferenceState =
 export interface PageReferences {
   /** The page's references, by key. */
   refs: Map<string, Reference>;
-  /** The keys the page cites. */
+  /** The keys the page cites, in the order it first cites them. */
   cited: Set<string>;
+  /** The page's citation style. */
+  style: CitationStyle;
+  /** Each work's number, for a numbered style. */
+  numbers: Map<string, number>;
+  /** Gives the page another style; missing where the page can't change. */
+  setStyle?: (id: string) => void;
   /** References whose item changed or went away in Zotero, by key. */
   states: Map<string, ReferenceState>;
   checking: boolean;
@@ -35,6 +42,8 @@ export interface PageReferences {
 const NONE: PageReferences = {
   refs: new Map(),
   cited: new Set(),
+  style: styleById("apa"),
+  numbers: new Map(),
   states: new Map(),
   checking: false,
   problem: null,
@@ -104,12 +113,17 @@ export async function checkReferences(
  */
 export function ReferencesProvider({
   markdown,
+  style: styleName,
+  setStyle,
   page,
   live = false,
   addElsewhere,
   children,
 }: {
   markdown: string;
+  /** The style the page's front matter names, `csl: ieee`. */
+  style?: string;
+  setStyle?: (id: string) => void;
   /** Names the open page: another page is checked afresh. */
   page?: string | null;
   /** Ask Zotero: only where the page is edited. */
@@ -120,6 +134,8 @@ export function ReferencesProvider({
   const list = useMemo(() => pageReferences(markdown), [markdown]);
   const refs = useMemo(() => new Map(list.map((ref) => [ref.key, ref])), [list]);
   const cited = useMemo(() => citedKeys(markdown), [markdown]);
+  const style = useMemo(() => styleById(styleName), [styleName]);
+  const numbers = useMemo(() => numberWorks(cited, list), [cited, list]);
   const [states, setStates] = useState<Map<string, ReferenceState>>(new Map());
   const [checking, setChecking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -170,13 +186,16 @@ export function ReferencesProvider({
     () => ({
       refs,
       cited,
+      style,
+      numbers,
+      setStyle,
       states,
       checking,
       problem,
       check: () => setAsks((n) => n + 1),
       addElsewhere,
     }),
-    [refs, cited, states, checking, problem, addElsewhere],
+    [refs, cited, style, numbers, setStyle, states, checking, problem, addElsewhere],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

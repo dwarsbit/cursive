@@ -3,7 +3,7 @@ import type { Editor, Range } from "@tiptap/core";
 import { BookMarked, Settings } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CiteController, CiteState } from "@/editor/cite";
-import { entryText } from "@/references/apa";
+import { entryPlain } from "@/references/styles";
 import { usePageReferences } from "@/references/context";
 import {
   putReference,
@@ -145,7 +145,7 @@ export function CiteMenu({
   controller: CiteController;
 }) {
   const { editor, query, range, rect } = state;
-  const { refs, addElsewhere } = usePageReferences();
+  const { refs, addElsewhere, style } = usePageReferences();
   const sources = useSources();
   const [found, setFound] = useState<{ query: string; options: Option[] } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -290,7 +290,7 @@ export function CiteMenu({
           "flex w-full flex-col rounded-md px-2 py-[5px] text-left",
           on && "bg-accent",
         )}
-        title={option.kind === "page" ? entryText(option.ref) : undefined}
+        title={option.kind === "page" ? entryPlain(style, option.ref) : undefined}
         onMouseEnter={() => setSelected(at)}
         onClick={() => pick(option)}
       >
